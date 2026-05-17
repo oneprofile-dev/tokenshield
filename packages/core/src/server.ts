@@ -2,6 +2,7 @@ import { createServer, IncomingMessage, ServerResponse, Server } from "node:http
 import type { ProxyConfig, RequestRecord } from "./types.js";
 import { handleAnthropicRequest } from "./proxy/anthropic-passthrough.js";
 import { Ledger } from "./ledger.js";
+import { telemetry } from "./telemetry.js";
 
 export interface ProxyServerHandle {
   proxy: Server;
@@ -50,11 +51,35 @@ async function closeServer(server: Server): Promise<void> {
 export async function start(opts: StartOptions): Promise<ProxyServerHandle> {
   const ledger = new Ledger(opts.config.ledgerPath);
 
+  const isTeamDeployment = opts.config.bind === "0.0.0.0";
   const sink = (r: RequestRecord): void => {
     try {
       ledger.record(r);
     } catch {
       // ledger errors must never break the request path
+    }
+    try {
+      // Approximate byte counts from token estimates (industry rule-of-thumb)
+      const tokensIn = r.usageRaw.inputTokens + r.usageRaw.cacheReadInputTokens;
+      const tokensOut = r.usageSent.inputTokens + r.usageSent.cacheReadInputTokens;
+      const TOKEN_TO_BYTE = 3.5;
+      const bytesIn = Math.round(tokensIn * TOKEN_TO_BYTE);
+      const bytesOut = Math.round(tokensOut * TOKEN_TO_BYTE);
+      telemetry.record({
+        bytesIn,
+        bytesOut,
+        bytesSaved: Math.max(0, bytesIn - bytesOut),
+        inputTokens: r.usageRaw.inputTokens,
+        outputTokens: r.usageRaw.outputTokens,
+        dollarsEstimate: r.dollarsRaw,
+        dollarsSaved: r.dollarsSaved,
+        provider: "anthropic",
+        model: r.model,
+        client: null,
+        teamDeployment: isTeamDeployment,
+      });
+    } catch {
+      // telemetry must never break the request path
     }
     opts.onRecord?.(r);
   };
@@ -142,6 +167,7 @@ export async function start(opts: StartOptions): Promise<ProxyServerHandle> {
     ledger,
     close: async () => {
       clearInterval(retentionInterval);
+      telemetry.stop();
       await Promise.all([closeServer(proxy), closeServer(dashboard)]);
       ledger.close();
     },

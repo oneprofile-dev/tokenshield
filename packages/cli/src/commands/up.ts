@@ -2,6 +2,7 @@ import { start, defaultConfig } from "@curatedmcp/tokenshield-core";
 import type { ProxyConfig } from "@curatedmcp/tokenshield-core";
 import { dashboardHtml } from "../dashboard.js";
 import { c, sym, box, link, say, emit, dim } from "../lib/ui.js";
+import { firstRunBanner, isFirstRun, markFirstRunComplete, telemetry } from "@curatedmcp/tokenshield-core";
 import { TokenShieldError } from "../lib/errors.js";
 import { requirePortFree, classifyApiKey } from "../lib/preflight.js";
 import { readDaemon, spawnDaemon } from "../lib/daemon.js";
@@ -113,6 +114,13 @@ export async function runUp(options: UpOptions): Promise<void> {
 
   emit(banner(config, { daemon: false }));
   maybeWarnAboutLocalKey();
+
+  if (isFirstRun()) {
+    emit(firstRunBanner());
+    markFirstRunComplete();
+  }
+
+  telemetry.start();
 
   let shuttingDown = false;
   const shutdown = (signal: string): void => {

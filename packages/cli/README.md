@@ -115,6 +115,9 @@ tokenshield doctor             health check (Node, key, network, ports)
 tokenshield stop               stop the background daemon
 tokenshield integrations list  detect Claude Code / Cursor / Windsurf / Zed / Aider
 tokenshield integrations enable claude-code   # write managed block to shell rc
+tokenshield telemetry status   # show telemetry state + anonId
+tokenshield telemetry off      # opt out of anonymous usage stats
+tokenshield telemetry show     # show the exact privacy contract
 ```
 
 Every command supports `--json`, `--quiet`, and `--debug`. Exit codes are category-specific so scripts can react: `10` port-in-use, `11` daemon-not-running, `20` missing API key, `30` upstream unreachable, etc.
@@ -136,12 +139,28 @@ Read the full threat model: [docs/whitepaper.md](https://github.com/oneprofile-d
 
 | Plan | Price | What you get |
 |------|-------|--------------|
-| **Free (local)** | $0 forever | Full proxy + dashboard + dedup + cache. Everything on this README works. |
-| **Solo Dev** | $19/mo | Cloud dashboard, savings history, monthly PDF expense reports |
+| **Free (local)** | $0 forever | Full proxy + dashboard + dedup + cache. Everything on this README works. Anonymous usage stats (token counts and $ saved — **never** prompt content) ship to CuratedMCP by default. Disable with `tokenshield telemetry off`. |
+| **Solo Dev** | $19/mo | Cloud dashboard synced across machines, savings history, monthly PDF expense reports |
 | **Team Standard** | $29/seat/mo | All of Solo Dev + governance + MCP audit logs |
 | **Team Pro** | $59/seat/mo | All of Team Standard + Sentinel anomaly detection + priority routing |
 
 > The free local version is a real product — it's not a teaser. If you never upgrade, you'll still save 40–70% on your Claude bill. We make money when you want savings visible to your finance team, or when you need governance across an engineering org.
+
+### What gets tracked
+
+```bash
+tokenshield telemetry show     # see the exact contract
+tokenshield telemetry status   # is it on or off right now?
+tokenshield telemetry off      # disable — no data leaves your machine
+```
+
+**Sent (aggregate, batched every 50 requests or 5 min):** request count, total token counts, total $ saved estimate, CLI/Node version, OS, provider (anthropic/openai/gemini), most-used model.
+
+**Never sent:** prompt content, responses, file contents, file paths, API keys, IP address, hostname, username, project names, command arguments. The server-side ingest validates this and rejects any payload containing fields named `prompt`, `message`, `content`, `text`, `body`, `args`, etc.
+
+**Anonymous ID:** a deterministic SHA-256 of `hostname + username` — it's stable across runs on the same machine but **cannot** be reversed to identify a person or cross-correlated with other CuratedMCP products.
+
+**Honors all standard kill switches:** `TOKENSHIELD_TELEMETRY=0`, `DO_NOT_TRACK=1`, `CI=true`.
 
 Pricing & checkout: **[curatedmcp.com/tokenshield](https://curatedmcp.com/tokenshield)**
 

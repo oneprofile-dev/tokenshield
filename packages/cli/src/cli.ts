@@ -15,13 +15,14 @@ import {
   runIntegrationsShow,
   runIntegrationsDisable,
 } from "./commands/integrations.js";
+import { runTelemetry } from "./commands/telemetry.js";
 import type { IntegrationId } from "./lib/integrations.js";
 import { setOutputMode, c, dim, emit, isJson } from "./lib/ui.js";
 import { ensureNumber, runCommand, installProcessHandlers } from "./lib/errors.js";
 
 installProcessHandlers();
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 
 const program = new Command();
 
@@ -282,6 +283,31 @@ integrations
   .action((target: string) =>
     runCommand(() => runIntegrationsDisable(target as "shell" | IntegrationId)),
   );
+
+// ── telemetry ─────────────────────────────────────────────────────────────────
+const telemetryCmd = program
+  .command("telemetry")
+  .description("Manage anonymous usage telemetry (aggregate counters only — no prompt content)");
+
+telemetryCmd
+  .command("on")
+  .description("Enable anonymous usage telemetry")
+  .action(() => runCommand(() => runTelemetry({ action: "on" })));
+
+telemetryCmd
+  .command("off")
+  .description("Disable telemetry — no data sent")
+  .action(() => runCommand(() => runTelemetry({ action: "off" })));
+
+telemetryCmd
+  .command("status")
+  .description("Show current telemetry state")
+  .action(() => runCommand(() => runTelemetry({ action: "status" })));
+
+telemetryCmd
+  .command("show")
+  .description("Show exactly what telemetry sends — the privacy contract")
+  .action(() => runCommand(() => runTelemetry({ action: "show" })));
 
 // ── go ────────────────────────────────────────────────────────────────────────
 program.parseAsync(process.argv).catch((err: unknown) => {

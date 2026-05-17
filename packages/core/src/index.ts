@@ -13,6 +13,17 @@ export {
 } from "./proxy/anthropic-passthrough.js";
 export { providerForPath, anthropic } from "./providers/registry.js";
 export type { Provider, Conversation, ConvMessage, ConvBlock, ProviderId } from "./providers/types.js";
+export {
+  telemetry,
+  Telemetry,
+  isTelemetryEnabled,
+  setTelemetryEnabled,
+  isFirstRun,
+  markFirstRunComplete,
+  firstRunBanner,
+  getAnonId,
+} from "./telemetry.js";
+export type { TelemetryRecord } from "./telemetry.js";
 export { Pipeline } from "./processors/pipeline.js";
 export { conversationDedup } from "./processors/conversation-dedup.js";
 export { ResponseCache } from "./processors/response-cache.js";
