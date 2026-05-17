@@ -1,5 +1,10 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { homedir, platform } from "node:os";
+import { homedir as osHomedir, platform } from "node:os";
+
+function homedir(): string {
+  // Prefer $HOME so tests can override; matches POSIX shell behavior anyway
+  return process.env["HOME"] ?? process.env["USERPROFILE"] ?? osHomedir();
+}
 import { join, dirname } from "node:path";
 import { execSync } from "node:child_process";
 

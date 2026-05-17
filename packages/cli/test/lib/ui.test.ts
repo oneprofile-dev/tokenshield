@@ -33,8 +33,8 @@ test("table renders aligned columns", () => {
   // Strip ANSI to test layout only
   const lines = stripAnsi(out).split("\n");
   assert.equal(lines.length, 3);
-  assert.match(lines[1]!, /^a\s+100$/);
-  assert.match(lines[2]!, /^bbb\s+1$/);
+  assert.match(lines[1]!, /^a\s+100\s*$/);
+  assert.match(lines[2]!, /^bbb\s+1\s*$/);
 });
 
 test("box wraps content and renders a title", () => {

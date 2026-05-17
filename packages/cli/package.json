@@ -13,7 +13,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "node --test --enable-source-maps dist/test/**/*.test.js",
+    "test": "tsc -p tsconfig.test.json && node --test --enable-source-maps dist-test/test/**/*.test.js",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
