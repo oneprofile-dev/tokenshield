@@ -5,7 +5,23 @@ export type { SavingsSummary } from "./ledger.js";
 export { dollarsFor, addUsage, emptyUsage, isKnownModel } from "./pricing.js";
 export { SSEParser } from "./proxy/sse.js";
 export { StreamUsageAccumulator, usageFromJson } from "./proxy/usage.js";
-export { handleAnthropicRequest } from "./proxy/anthropic-passthrough.js";
+export {
+  handleAnthropicRequest,
+  setProcessorEnabled,
+  getProcessorEnabledIds,
+  getResponseCacheStats,
+} from "./proxy/anthropic-passthrough.js";
+export { providerForPath, anthropic } from "./providers/registry.js";
+export type { Provider, Conversation, ConvMessage, ConvBlock, ProviderId } from "./providers/types.js";
+export { Pipeline } from "./processors/pipeline.js";
+export { conversationDedup } from "./processors/conversation-dedup.js";
+export { ResponseCache } from "./processors/response-cache.js";
+export type {
+  Processor,
+  ProcessorContext,
+  ProcessorEffect,
+  ProcessorResult,
+} from "./processors/types.js";
 export type {
   RequestRecord,
   ProxyConfig,
