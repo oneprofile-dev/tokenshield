@@ -22,7 +22,7 @@ import { ensureNumber, runCommand, installProcessHandlers } from "./lib/errors.j
 
 installProcessHandlers();
 
-const VERSION = "0.3.0";
+const VERSION = "1.0.0";
 
 const program = new Command();
 

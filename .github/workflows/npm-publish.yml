@@ -36,6 +36,18 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org/
       - run: npm ci
+
+      - name: Stamp version from tag (or version.txt for manual runs)
+        run: |
+          TAG="${GITHUB_REF_NAME:-}"
+          if [[ "$TAG" == v* ]]; then
+            V="${TAG#v}"
+            echo "$V" > version.txt
+            node scripts/sync-version.mjs "$V"
+          else
+            node scripts/sync-version.mjs
+          fi
+
       - run: npm run build
 
       - name: Publish @curatedmcp/tokenshield-core

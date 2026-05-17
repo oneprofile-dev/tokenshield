@@ -11,7 +11,8 @@
     "test": "npm --workspace @curatedmcp/tokenshield-core run test && npm --workspace @curatedmcp/tokenshield run test",
     "lint": "tsc -p packages/core --noEmit && tsc -p packages/cli --noEmit",
     "dev:proxy": "npm --workspace @curatedmcp/tokenshield-core run dev",
-    "cli": "node packages/cli/dist/cli.js"
+    "cli": "node packages/cli/dist/cli.js",
+    "sync-version": "node scripts/sync-version.mjs"
   },
   "engines": {
     "node": ">=22.0.0"
