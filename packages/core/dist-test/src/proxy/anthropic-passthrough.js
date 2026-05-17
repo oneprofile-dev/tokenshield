@@ -1,10 +1,13 @@
 import { request as httpsRequest } from "node:https";
 import { request as httpRequest } from "node:http";
 import { URL } from "node:url";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { emptyUsage, dollarsFor } from "../pricing.js";
 import { SSEParser } from "./sse.js";
-import { StreamUsageAccumulator, usageFromJson } from "./usage.js";
+import { providerForPath } from "../providers/registry.js";
+import { Pipeline } from "../processors/pipeline.js";
+import { conversationDedup } from "../processors/conversation-dedup.js";
+import { ResponseCache } from "../processors/response-cache.js";
 const HOP_BY_HOP = new Set([
     "connection",
     "keep-alive",
@@ -50,24 +53,41 @@ async function readJsonBody(req, limitBytes = 64 * 1024 * 1024) {
     }
     return { raw, parsed };
 }
-function extractModel(parsedBody) {
-    if (!parsedBody || typeof parsedBody !== "object")
-        return "unknown";
-    const obj = parsedBody;
-    return typeof obj["model"] === "string" ? obj["model"] : "unknown";
+function conversationFingerprint(parsed) {
+    if (!parsed || typeof parsed !== "object")
+        return "_";
+    const obj = parsed;
+    const sys = obj["system"];
+    const messages = Array.isArray(obj["messages"]) ? obj["messages"] : [];
+    const firstUser = messages.find((m) => typeof m === "object" && m !== null && m["role"] === "user");
+    return createHash("sha256")
+        .update(JSON.stringify({ sys, firstUser }))
+        .digest("hex")
+        .slice(0, 16);
 }
-function isStream(parsedBody) {
-    if (!parsedBody || typeof parsedBody !== "object")
-        return false;
-    const obj = parsedBody;
-    return obj["stream"] === true;
+function bodySize(json) {
+    return Buffer.byteLength(JSON.stringify(json ?? null), "utf8");
 }
 /**
- * Forward an inbound request to the configured upstream Anthropic endpoint.
- * Passes bytes through byte-faithfully while recording usage and dollars
- * out-of-band. Fail-open: any internal exception logs and 502s WITH a
- * plain-text error body so the client can retry.
+ * Singleton pipeline + cache. One process = one set of state.
+ * Future: per-license configuration once cloud-tier gating ships.
  */
+const PROCESSORS = [conversationDedup];
+const ENABLED = new Set(PROCESSORS.filter((p) => p.enabledByDefault).map((p) => p.id));
+const PIPELINE = new Pipeline({ processors: PROCESSORS, enabled: ENABLED });
+const RESPONSE_CACHE = new ResponseCache();
+export function setProcessorEnabled(id, enabled) {
+    if (enabled)
+        ENABLED.add(id);
+    else
+        ENABLED.delete(id);
+}
+export function getProcessorEnabledIds() {
+    return Array.from(ENABLED);
+}
+export function getResponseCacheStats() {
+    return RESPONSE_CACHE.stats();
+}
 export async function handleAnthropicRequest(req, res, config, sink) {
     const startedAt = Date.now();
     const requestId = randomUUID();
@@ -81,41 +101,153 @@ export async function handleAnthropicRequest(req, res, config, sink) {
         res.end(`tokenshield: ${err.message}`);
         return;
     }
-    const model = extractModel(body.parsed);
-    const streamed = isStream(body.parsed);
     const upstream = new URL(req.url ?? "/", config.upstreamBaseUrl);
+    const provider = providerForPath(upstream.pathname);
     const isHttps = upstream.protocol === "https:";
     const requester = isHttps ? httpsRequest : httpRequest;
+    // ── 1. Determine model + stream flag from raw body (before any rewrite) ──
+    let model = "unknown";
+    let streamed = false;
+    if (provider !== null) {
+        model = provider.extractModel(body.parsed);
+        streamed = provider.isStreaming(body.parsed);
+    }
+    // ── 2. Run request-side processors (fail-open) ──────────────────────────
+    let outboundParsed = body.parsed;
+    let outboundBytes = body.raw;
+    const effects = [];
+    let bytesRaw = body.raw.length;
+    let bytesSent = body.raw.length;
+    if (provider !== null && body.parsed !== null) {
+        const conv = provider.toConversation(body.parsed);
+        if (conv !== null) {
+            const ctx = {
+                providerId: provider.id,
+                conversationFingerprint: conversationFingerprint(body.parsed),
+                inboundBytes: body.raw.length,
+            };
+            // sizeOf measures wire-format (after applyConversation), not in-memory shape
+            const wireSize = (c) => bodySize(provider.applyConversation(body.parsed, c));
+            const result = PIPELINE.run(conv, ctx, wireSize);
+            for (const e of result.effects)
+                effects.push(e);
+            if (result.effects.length > 0) {
+                outboundParsed = provider.applyConversation(body.parsed, result.conversation);
+                const serialized = Buffer.from(JSON.stringify(outboundParsed), "utf8");
+                if (serialized.length < body.raw.length) {
+                    outboundBytes = serialized;
+                    bytesSent = serialized.length;
+                }
+            }
+        }
+    }
+    // ── 3. Response cache: short-circuit if we have a fresh hit ─────────────
+    if (provider !== null && body.parsed !== null) {
+        const hit = RESPONSE_CACHE.lookup(body.parsed);
+        if (hit !== null) {
+            res.statusCode = hit.status;
+            for (const [k, v] of Object.entries(hit.headers)) {
+                if (HOP_BY_HOP.has(k.toLowerCase()))
+                    continue;
+                res.setHeader(k, v);
+            }
+            res.setHeader("x-tokenshield-cache", "hit");
+            res.setHeader("x-tokenshield-cache-age-ms", String(hit.cachedAgoMs));
+            res.end(hit.body);
+            const dollarsRaw = dollarsFor(hit.model || model, {
+                inputTokens: hit.usage.inputTokens,
+                outputTokens: hit.usage.outputTokens,
+                cacheCreationInputTokens: 0,
+                cacheReadInputTokens: 0,
+            });
+            try {
+                sink({
+                    id: requestId,
+                    timestamp: startedAt,
+                    model: hit.model || model,
+                    endpoint: upstream.pathname,
+                    streamed: false,
+                    durationMs: Date.now() - startedAt,
+                    upstreamStatus: hit.status,
+                    upstreamError: null,
+                    usageRaw: {
+                        inputTokens: hit.usage.inputTokens,
+                        outputTokens: hit.usage.outputTokens,
+                        cacheCreationInputTokens: 0,
+                        cacheReadInputTokens: 0,
+                    },
+                    // Cached: zero new tokens billed
+                    usageSent: emptyUsage(),
+                    dollarsRaw,
+                    dollarsSent: 0,
+                    dollarsSaved: dollarsRaw,
+                    processorsApplied: ["response-cache:hit", ...effects.map((e) => e.name)],
+                });
+            }
+            catch {
+                /* sink errors must never break the request */
+            }
+            return;
+        }
+    }
     const headers = copyHeaders(req.headers);
     headers["host"] = upstream.host;
-    headers["content-length"] = String(body.raw.length);
+    headers["content-length"] = String(outboundBytes.length);
     let upstreamStatus = 0;
     let upstreamError = null;
     let usage = emptyUsage();
     let modelFromResponse = null;
+    const cachedHeaders = {};
+    const responseBodyChunks = [];
     const finalize = () => {
-        const dollars = dollarsFor(modelFromResponse ?? model, usage);
+        const effectiveModel = modelFromResponse ?? model;
+        const dollarsSent = dollarsFor(effectiveModel, usage);
+        // Estimate "raw" cost — what the bill would have been without compression.
+        // We use actual sent input tokens + the ratio of bytes saved at the
+        // request layer. This is honest: it's an estimate, marked as such.
+        const totalBytesSavedReq = Math.max(0, bytesRaw - bytesSent);
+        const ratio = bytesSent > 0 ? totalBytesSavedReq / bytesSent : 0;
+        const estimatedInputTokensRaw = Math.round(usage.inputTokens * (1 + ratio));
+        const usageRaw = {
+            inputTokens: estimatedInputTokensRaw,
+            outputTokens: usage.outputTokens,
+            cacheCreationInputTokens: usage.cacheCreationInputTokens,
+            cacheReadInputTokens: usage.cacheReadInputTokens,
+        };
+        const dollarsRaw = dollarsFor(effectiveModel, usageRaw);
+        const dollarsSaved = Math.max(0, dollarsRaw - dollarsSent);
         const record = {
             id: requestId,
             timestamp: startedAt,
-            model: modelFromResponse ?? model,
+            model: effectiveModel,
             endpoint: upstream.pathname,
             streamed,
             durationMs: Date.now() - startedAt,
             upstreamStatus,
             upstreamError,
-            usageRaw: usage,
+            usageRaw,
             usageSent: usage,
-            dollarsRaw: dollars,
-            dollarsSent: dollars,
-            dollarsSaved: 0,
-            processorsApplied: [],
+            dollarsRaw,
+            dollarsSent,
+            dollarsSaved,
+            processorsApplied: effects.map((e) => e.name),
         };
         try {
             sink(record);
         }
         catch {
-            // never let the sink kill the request
+            /* never */
+        }
+        // Cache the JSON response (no-op if not cacheable)
+        if (!streamed && provider !== null && responseBodyChunks.length > 0) {
+            const buf = Buffer.concat(responseBodyChunks);
+            RESPONSE_CACHE.store(body.parsed, {
+                status: upstreamStatus,
+                headers: cachedHeaders,
+                body: buf,
+                usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
+                model: effectiveModel,
+            });
         }
     };
     await new Promise((resolve) => {
@@ -133,33 +265,38 @@ export async function handleAnthropicRequest(req, res, config, sink) {
                     continue;
                 if (HOP_BY_HOP.has(name.toLowerCase()))
                     continue;
-                res.setHeader(name, value);
+                const strVal = Array.isArray(value) ? value.join(", ") : value;
+                res.setHeader(name, strVal);
+                cachedHeaders[name] = strVal;
+            }
+            if (effects.length > 0) {
+                res.setHeader("x-tokenshield-processors", effects.map((e) => e.name).join(","));
             }
             const contentType = String(upstreamRes.headers["content-type"] ?? "");
             const isSse = contentType.includes("text/event-stream");
             if (isSse) {
                 const parser = new SSEParser();
-                const accum = new StreamUsageAccumulator();
+                const accum = provider !== null ? provider.createStreamAccumulator() : null;
                 upstreamRes.on("data", (chunk) => {
                     res.write(chunk);
-                    try {
-                        for (const ev of parser.push(chunk.toString("utf8"))) {
-                            accum.observe(ev);
+                    if (accum !== null) {
+                        try {
+                            for (const ev of parser.push(chunk.toString("utf8"))) {
+                                accum.observe(ev);
+                            }
                         }
-                    }
-                    catch {
-                        // accounting must never break the data path
+                        catch { /* accounting must never break the data path */ }
                     }
                 });
                 upstreamRes.on("end", () => {
-                    try {
-                        for (const ev of parser.flush())
-                            accum.observe(ev);
-                        usage = accum.total();
-                        modelFromResponse = accum.model();
-                    }
-                    catch {
-                        // ignore
+                    if (accum !== null) {
+                        try {
+                            for (const ev of parser.flush())
+                                accum.observe(ev);
+                            usage = accum.total();
+                            modelFromResponse = accum.model();
+                        }
+                        catch { /* ignore */ }
                     }
                     res.end();
                     finalize();
@@ -173,24 +310,21 @@ export async function handleAnthropicRequest(req, res, config, sink) {
                 });
             }
             else {
-                const chunks = [];
                 upstreamRes.on("data", (chunk) => {
-                    chunks.push(chunk);
+                    responseBodyChunks.push(chunk);
                     res.write(chunk);
                 });
                 upstreamRes.on("end", () => {
                     try {
-                        const text = Buffer.concat(chunks).toString("utf8");
-                        if (text.length > 0) {
+                        const text = Buffer.concat(responseBodyChunks).toString("utf8");
+                        if (text.length > 0 && provider !== null) {
                             const parsed = JSON.parse(text);
-                            const { usage: u, model: m } = usageFromJson(parsed);
-                            usage = u;
-                            modelFromResponse = m;
+                            const u = provider.usageFromResponseJson(parsed);
+                            usage = u.usage;
+                            modelFromResponse = u.model;
                         }
                     }
-                    catch {
-                        // non-JSON or parse failure — leave usage at zero
-                    }
+                    catch { /* non-JSON or parse failure — leave usage at zero */ }
                     res.end();
                     finalize();
                     resolve();
@@ -222,7 +356,7 @@ export async function handleAnthropicRequest(req, res, config, sink) {
             finalize();
             resolve();
         });
-        upstreamReq.write(body.raw);
+        upstreamReq.write(outboundBytes);
         upstreamReq.end();
     });
 }
