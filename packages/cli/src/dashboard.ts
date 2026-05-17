@@ -16,9 +16,15 @@ export function dashboardHtml(opts: { proxyPort: number; bind: string; version: 
   --text: #e7e9ee;
   --muted: #8b94a3;
   --accent: #6dd3a8;
-  --accent-dim: rgba(109,211,168,0.15);
   --warn: #f0b35e;
+  --warn-bg: rgba(240,179,94,0.08);
+  --warn-border: rgba(240,179,94,0.35);
   --bad: #ef6868;
+  --bad-bg: rgba(239,104,104,0.08);
+  --bad-border: rgba(239,104,104,0.35);
+  --info: #7eb8ff;
+  --info-bg: rgba(126,184,255,0.08);
+  --info-border: rgba(126,184,255,0.35);
   --link: #7eb8ff;
 }
 * { box-sizing: border-box }
@@ -26,19 +32,37 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.
 .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
 
 /* ── header ── */
-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 12px; }
-.brand { display: flex; align-items: baseline; gap: 10px; }
+header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .brand-name { font-size: 18px; font-weight: 700; letter-spacing: 0.02em; color: var(--text); text-decoration: none; }
 .brand-name:hover { color: var(--accent); }
 .brand-by { font-size: 11px; color: var(--muted); font-weight: 400; letter-spacing: 0.02em; }
 .brand-by a { color: var(--accent); text-decoration: none; font-weight: 500; }
 .brand-by a:hover { text-decoration: underline; }
 .brand-ver { font-size: 12px; color: var(--muted); font-weight: 400; }
+.mode-pill { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 999px; background: var(--info-bg); border: 1px solid var(--info-border); color: var(--info); font-weight: 600; cursor: help; }
 .status { display: flex; align-items: center; gap: 14px; }
 .status-pill { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: var(--accent); flex-shrink: 0; }
 .dot.pulse { animation: pulse 2s ease-in-out infinite; }
 @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.45 } }
+
+/* ── diagnostic banner ── */
+.diag { display: none; margin-bottom: 18px; border-radius: 10px; padding: 14px 16px; font-size: 13px; line-height: 1.55; border: 1px solid; }
+.diag.show { display: block; }
+.diag.info { background: var(--info-bg); border-color: var(--info-border); color: var(--text); }
+.diag.warn { background: var(--warn-bg); border-color: var(--warn-border); color: var(--text); }
+.diag.bad { background: var(--bad-bg); border-color: var(--bad-border); color: var(--text); }
+.diag-title { font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.diag-title .icon { display: inline-flex; width: 18px; height: 18px; align-items: center; justify-content: center; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.diag.info .diag-title { color: var(--info); }
+.diag.info .icon { background: var(--info); color: #0b0d10; }
+.diag.warn .diag-title { color: var(--warn); }
+.diag.warn .icon { background: var(--warn); color: #0b0d10; }
+.diag.bad .diag-title { color: var(--bad); }
+.diag.bad .icon { background: var(--bad); color: #0b0d10; }
+.diag code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; background: var(--panel-2); padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border); }
+.diag a { color: var(--link); }
 
 /* ── metric cards ── */
 .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
@@ -46,15 +70,16 @@ header { display: flex; align-items: center; justify-content: space-between; mar
 .card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .card .value { font-size: 22px; font-weight: 600; margin-top: 6px; font-variant-numeric: tabular-nums; }
 .card .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
-
-/* ── savings highlight card ── */
 .card.savings { border-color: rgba(109,211,168,0.25); background: linear-gradient(135deg, var(--panel) 0%, rgba(109,211,168,0.06) 100%); }
 .card.savings .value { color: var(--accent); }
 .card.savings .label { color: rgba(109,211,168,0.7); }
 
 /* ── tables ── */
 .section { margin-top: 24px; }
-.section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 10px; }
+.section-head { display: flex; justify-content: space-between; align-items: center; margin: 0 0 10px; }
+.section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0; }
+.toggle-link { font-size: 11px; color: var(--muted); cursor: pointer; user-select: none; background: none; border: none; padding: 0; font-family: inherit; }
+.toggle-link:hover { color: var(--accent); }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
 th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
@@ -63,18 +88,21 @@ tr:last-child td { border-bottom: 0; }
 .num { text-align: right; }
 .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--border); }
 .pill.ok { color: var(--accent); border-color: rgba(109,211,168,0.35); }
-.pill.err { color: var(--bad); border-color: rgba(239,104,104,0.35); }
+.pill.warn { color: var(--warn); border-color: var(--warn-border); }
+.pill.err { color: var(--bad); border-color: var(--bad-border); }
+.row-faded td { opacity: 0.55; }
 
 /* ── misc ── */
-.cmd { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+.cmd { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; display: inline-block; }
 .kbd { font-family: ui-monospace, monospace; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 11px; }
 a { color: var(--link); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* ── footer ── */
-.footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
-.footer-privacy { color: var(--muted); font-size: 12px; flex: 1 1 400px; }
-.footer-links { display: flex; align-items: center; gap: 14px; flex-shrink: 0; flex-wrap: wrap; }
+.footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+.footer-privacy { color: var(--muted); font-size: 12px; flex: 1 1 380px; line-height: 1.7; }
+.footer-privacy .cmd { margin: 4px 0; }
+.footer-links { display: flex; align-items: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap; }
 .footer-links a { font-size: 12px; color: var(--muted); text-decoration: none; white-space: nowrap; }
 .footer-links a:hover { color: var(--accent); text-decoration: none; }
 .footer-links .sep { color: var(--border); user-select: none; }
@@ -89,20 +117,23 @@ a:hover { text-decoration: underline; }
       <a class="brand-name" href="https://www.curatedmcp.com/tokenshield" target="_blank" rel="noopener">TokenShield</a>
       <span class="brand-ver">v${opts.version}</span>
       <span class="brand-by">by <a href="https://www.curatedmcp.com" target="_blank" rel="noopener">CuratedMCP</a></span>
+      <span class="mode-pill" title="Estimate mode measures your spend. Active compression processors (dedup, cache, diff) ship in upcoming releases — track at curatedmcp.com/tokenshield.">Estimate mode</span>
     </div>
     <div class="status">
       <div class="status-pill">
-        <span class="dot pulse"></span>
+        <span class="dot pulse" id="status-dot"></span>
         <span id="status-text">proxy live · ${opts.bind}:${opts.proxyPort}</span>
       </div>
     </div>
   </header>
 
+  <div id="diag" class="diag"></div>
+
   <div class="grid">
     <div class="card savings">
       <div class="label">Spent (24h)</div>
       <div class="value" id="dollars-spent">$0.00</div>
-      <div class="sub" id="request-count">0 requests</div>
+      <div class="sub" id="request-count">0 requests · 0 successful</div>
     </div>
     <div class="card">
       <div class="label">Input tokens (24h)</div>
@@ -138,7 +169,10 @@ a:hover { text-decoration: underline; }
   </div>
 
   <div class="section">
-    <h2>Recent requests</h2>
+    <div class="section-head">
+      <h2>Recent requests</h2>
+      <button class="toggle-link" id="toggle-noise" onclick="toggleNoise()">Show probes</button>
+    </div>
     <table id="recent">
       <thead>
         <tr>
@@ -158,7 +192,7 @@ a:hover { text-decoration: underline; }
 
   <div class="footer">
     <div class="footer-privacy">
-      Privacy: TokenShield never stores prompt content. Your Anthropic API key stays in process memory.
+      Privacy: TokenShield never stores prompt content. Your Anthropic API key stays in process memory.<br>
       Set <span class="cmd">export ANTHROPIC_BASE_URL=${proxyBase}</span> in the shell you run Claude Code from.
     </div>
     <div class="footer-links">
@@ -178,6 +212,88 @@ const fmtDollars = (d) => '$' + Number(d || 0).toFixed(Math.abs(d) < 1 ? 4 : 2);
 const fmtTime = (ms) => new Date(ms).toLocaleTimeString();
 const fmtMs = (ms) => ms < 1000 ? ms + 'ms' : (ms / 1000).toFixed(1) + 's';
 
+// Treat /v1/* requests as real Anthropic traffic; everything else (e.g. GET /, probes) is noise.
+const isApiCall = (r) => typeof r.endpoint === 'string' && r.endpoint.startsWith('/v1/');
+
+let showNoise = false;
+function toggleNoise() {
+  showNoise = !showNoise;
+  document.getElementById('toggle-noise').textContent = showNoise ? 'Hide probes' : 'Show probes';
+  // Re-render on next tick from cached state
+  if (window.__lastRec) renderRecent(window.__lastRec);
+}
+
+function renderDiagnostic(rec) {
+  const diag = document.getElementById('diag');
+  const apiCalls = rec.filter(isApiCall);
+  const failed = apiCalls.filter((r) => r.upstreamStatus === 401 || r.upstreamStatus === 403);
+  const fiveXx = apiCalls.filter((r) => r.upstreamStatus >= 500);
+  const ok = apiCalls.filter((r) => r.upstreamStatus >= 200 && r.upstreamStatus < 300);
+
+  let html = '';
+  let cls = '';
+
+  if (apiCalls.length === 0) {
+    cls = 'info';
+    html = '<div class="diag-title"><span class="icon">i</span>Waiting for traffic</div>' +
+      'No Anthropic API calls yet. In the shell that runs Claude Code, set:<br>' +
+      '<code>export ANTHROPIC_API_KEY=sk-ant-…</code> &nbsp; <code>export ANTHROPIC_BASE_URL=${proxyBase}</code><br>' +
+      'Then run <code>claude</code> in that same shell.';
+  } else if (failed.length >= apiCalls.length * 0.5 && failed.length > 0) {
+    cls = 'bad';
+    const pct = Math.round((failed.length / apiCalls.length) * 100);
+    html = '<div class="diag-title"><span class="icon">!</span>' + pct + '% of API calls failing with 401/403 — your API key isn\\'t reaching Anthropic</div>' +
+      'The proxy is forwarding requests fine, but Anthropic is rejecting them. In the <strong>shell that runs Claude Code</strong> (not this one), check:<br>' +
+      '<code>echo $ANTHROPIC_API_KEY</code> — should start with <code>sk-ant-</code><br>' +
+      '<code>echo $ANTHROPIC_BASE_URL</code> — should be <code>${proxyBase}</code><br>' +
+      'Then restart Claude Code in that shell.';
+  } else if (fiveXx.length >= apiCalls.length * 0.3 && fiveXx.length > 0) {
+    cls = 'warn';
+    html = '<div class="diag-title"><span class="icon">!</span>Upstream errors from Anthropic</div>' +
+      fiveXx.length + ' of ' + apiCalls.length + ' recent requests returned 5xx. Check <a href="https://status.anthropic.com" target="_blank" rel="noopener">status.anthropic.com</a>.';
+  } else if (ok.length > 0) {
+    // Healthy — hide the banner entirely
+    diag.className = 'diag';
+    diag.innerHTML = '';
+    return;
+  }
+
+  diag.className = 'diag show ' + cls;
+  diag.innerHTML = html;
+}
+
+function renderRecent(rec) {
+  const recBody = document.querySelector('#recent tbody');
+  const filtered = showNoise ? rec : rec.filter(isApiCall);
+
+  if (filtered.length === 0) {
+    const msg = rec.length === 0
+      ? 'No requests recorded yet.'
+      : 'No Anthropic API calls yet (' + rec.length + ' non-API probe' + (rec.length === 1 ? '' : 's') + ' hidden — click "Show probes" to view).';
+    recBody.innerHTML = '<tr><td colspan="8" class="muted">' + msg + '</td></tr>';
+    return;
+  }
+
+  recBody.innerHTML = filtered.map((r) => {
+    const status = Number(r.upstreamStatus) || 0;
+    const isOk = status >= 200 && status < 300;
+    const isAuthFail = status === 401 || status === 403;
+    const pillCls = isOk ? 'ok' : (isAuthFail ? 'warn' : 'err');
+    const isProbe = !isApiCall(r);
+    const modelDisplay = (r.model === 'unknown' && isProbe) ? '<span class="muted">—</span>' : r.model;
+    return '<tr class="' + (isProbe ? 'row-faded' : '') + '">' +
+      '<td class="muted">' + fmtTime(r.timestamp) + '</td>' +
+      '<td>' + modelDisplay + '</td>' +
+      '<td class="muted">' + r.endpoint + '</td>' +
+      '<td class="num">' + fmtNum(r.usageRaw.inputTokens) + '</td>' +
+      '<td class="num">' + fmtNum(r.usageRaw.outputTokens) + '</td>' +
+      '<td class="num muted">' + fmtMs(r.durationMs) + '</td>' +
+      '<td class="num">' + fmtDollars(r.dollarsRaw) + '</td>' +
+      '<td><span class="pill ' + pillCls + '">' + status + '</span></td>' +
+      '</tr>';
+  }).join('');
+}
+
 async function refresh() {
   try {
     const [sumRes, recRes] = await Promise.all([
@@ -189,12 +305,19 @@ async function refresh() {
     }
     const sum = await sumRes.json();
     const rec = await recRes.json();
+    window.__lastRec = rec;
+
     // Successful refresh — clear any stale error and restore the live indicator
     const statusEl = document.getElementById('status-text');
     if (statusEl) statusEl.textContent = 'live · ${opts.bind}:${opts.proxyPort}';
 
+    // Count successful API calls for the spent card
+    const apiCalls = rec.filter(isApiCall);
+    const okCount = apiCalls.filter((r) => r.upstreamStatus >= 200 && r.upstreamStatus < 300).length;
+
     document.getElementById('dollars-spent').textContent = fmtDollars(sum.dollarsRaw);
-    document.getElementById('request-count').textContent = fmtNum(sum.requestCount) + ' requests';
+    document.getElementById('request-count').textContent =
+      fmtNum(sum.requestCount) + ' total · ' + okCount + ' successful';
     document.getElementById('input-tokens').textContent = fmtNum(sum.totalInputTokensRaw);
     document.getElementById('output-tokens').textContent = fmtNum(sum.totalOutputTokensRaw);
 
@@ -203,32 +326,21 @@ async function refresh() {
     document.getElementById('weekly-projected').textContent = fmtDollars(weeklyProjection);
 
     const modelBody = document.querySelector('#by-model tbody');
-    if (sum.byModel && sum.byModel.length > 0) {
-      modelBody.innerHTML = sum.byModel.map((m) =>
+    const realModels = (sum.byModel || []).filter((m) => m.model && m.model !== 'unknown');
+    if (realModels.length > 0) {
+      modelBody.innerHTML = realModels.map((m) =>
         '<tr><td>' + m.model + '</td>' +
         '<td class="num">' + fmtNum(m.requests) + '</td>' +
         '<td class="num">' + fmtNum(m.inputTokens) + '</td>' +
         '<td class="num">' + fmtNum(m.outputTokens) + '</td>' +
         '<td class="num">' + fmtDollars(m.dollars) + '</td></tr>'
       ).join('');
+    } else {
+      modelBody.innerHTML = '<tr><td colspan="5" class="muted">No model traffic yet. Run Claude Code with <span class="kbd">ANTHROPIC_BASE_URL=${proxyBase}</span>.</td></tr>';
     }
 
-    const recBody = document.querySelector('#recent tbody');
-    if (rec && rec.length > 0) {
-      recBody.innerHTML = rec.map((r) => {
-        const ok = r.upstreamStatus >= 200 && r.upstreamStatus < 300;
-        return '<tr>' +
-          '<td class="muted">' + fmtTime(r.timestamp) + '</td>' +
-          '<td>' + r.model + '</td>' +
-          '<td class="muted">' + r.endpoint + '</td>' +
-          '<td class="num">' + fmtNum(r.usageRaw.inputTokens) + '</td>' +
-          '<td class="num">' + fmtNum(r.usageRaw.outputTokens) + '</td>' +
-          '<td class="num muted">' + fmtMs(r.durationMs) + '</td>' +
-          '<td class="num">' + fmtDollars(r.dollarsRaw) + '</td>' +
-          '<td><span class="pill ' + (ok ? 'ok' : 'err') + '">' + r.upstreamStatus + '</span></td>' +
-          '</tr>';
-      }).join('');
-    }
+    renderRecent(rec);
+    renderDiagnostic(rec);
   } catch (e) {
     document.getElementById('status-text').textContent = 'error: ' + e.message;
   }
