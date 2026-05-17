@@ -1,0 +1,30 @@
+{
+  "name": "tokenshield-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "TokenShield — local API-layer proxy that cuts Claude Code bills 40–70%",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm --workspace @curatedmcp/tokenshield-core run build && npm --workspace @curatedmcp/tokenshield run build",
+    "test": "npm --workspace @curatedmcp/tokenshield-core run test",
+    "lint": "tsc -p packages/core --noEmit && tsc -p packages/cli --noEmit",
+    "dev:proxy": "npm --workspace @curatedmcp/tokenshield-core run dev",
+    "cli": "node packages/cli/dist/cli.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "author": "CuratedMCP",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/curatedmcp/tokenshield"
+  },
+  "homepage": "https://curatedmcp.com/tokenshield",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}
