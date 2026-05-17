@@ -1,33 +1,57 @@
-# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
-# For more information see: https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
-
-name: AI TokenShield
+name: AI TokenShield — npm publish
 
 on:
   release:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run — pack only, do not publish"
+        required: false
+        default: "false"
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - run: npm ci
-      - run: npm test
-
-  publish-npm:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
+          node-version: 22
           registry-url: https://registry.npmjs.org/
       - run: npm ci
-      - run: npm publish
+      - run: npm run build
+      - run: npm test
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org/
+      - run: npm ci
+      - run: npm run build
+
+      - name: Publish @curatedmcp/tokenshield-core
+        if: ${{ inputs.dry_run != 'true' }}
+        run: npm publish --workspace @curatedmcp/tokenshield-core --access public --provenance
         env:
-          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @curatedmcp/tokenshield (CLI)
+        if: ${{ inputs.dry_run != 'true' }}
+        run: npm publish --workspace @curatedmcp/tokenshield --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Dry-run pack
+        if: ${{ inputs.dry_run == 'true' }}
+        run: |
+          npm pack --workspace @curatedmcp/tokenshield-core --dry-run
+          npm pack --workspace @curatedmcp/tokenshield --dry-run
