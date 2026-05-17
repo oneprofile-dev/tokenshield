@@ -1,7 +1,7 @@
 {
   "name": "tokenshield-monorepo",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "TokenShield — local API-layer proxy that cuts Claude Code bills 40–70%",
   "workspaces": [
     "packages/*"
