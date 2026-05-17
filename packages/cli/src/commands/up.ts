@@ -7,6 +7,7 @@ import { TokenShieldError } from "../lib/errors.js";
 import { requirePortFree, classifyApiKey } from "../lib/preflight.js";
 import { readDaemon, spawnDaemon } from "../lib/daemon.js";
 import { logFile } from "../lib/paths.js";
+import { openBrowser } from "../lib/open-browser.js";
 
 export interface UpOptions {
   port: number;
@@ -16,6 +17,7 @@ export interface UpOptions {
   ledger?: string;
   retentionDays: number;
   daemon: boolean;
+  open?: boolean;
 }
 
 function banner(config: ProxyConfig, opts: { daemon: boolean; logPath?: string }): string {
@@ -121,6 +123,15 @@ export async function runUp(options: UpOptions): Promise<void> {
   }
 
   telemetry.start();
+
+  // Auto-open dashboard on first run, or whenever --open is set. Skip in
+  // daemon mode (handled separately), CI, or when stdout isn't a TTY.
+  if (options.open !== false) {
+    const dashUrl = `http://${config.bind === "0.0.0.0" ? "127.0.0.1" : config.bind}:${config.dashboardPort}`;
+    say("");
+    say(`${sym.arrow} Opening dashboard in your browser… ${dim("(disable with --no-open)")}`);
+    openBrowser(dashUrl);
+  }
 
   let shuttingDown = false;
   const shutdown = (signal: string): void => {

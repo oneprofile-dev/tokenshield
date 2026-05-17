@@ -133,8 +133,14 @@ async function refresh() {
       fetch('/api/summary'),
       fetch('/api/recent'),
     ]);
+    if (!sumRes.ok || !recRes.ok) {
+      throw new Error('proxy returned ' + (sumRes.ok ? recRes.status : sumRes.status));
+    }
     const sum = await sumRes.json();
     const rec = await recRes.json();
+    // Successful refresh — clear any stale error and restore the live indicator
+    const statusEl = document.getElementById('status-text');
+    if (statusEl) statusEl.textContent = 'live';
 
     document.getElementById('dollars-spent').textContent = fmtDollars(sum.dollarsRaw);
     document.getElementById('request-count').textContent = fmtNum(sum.requestCount) + ' requests';

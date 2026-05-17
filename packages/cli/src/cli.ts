@@ -81,10 +81,12 @@ program
   .option("--ledger <path>", "SQLite ledger path")
   .option("--retention-days <n>", "ledger retention in days", "7")
   .option("--daemon, -d", "run in background", false)
+  .option("--no-open", "don't auto-open the dashboard in your browser")
   .addHelpText(
     "after",
     `\n${c.bold("Examples")}
-  ${c.cyan("$ tokenshield up")}                          ${dim("# foreground, default ports")}
+  ${c.cyan("$ tokenshield up")}                          ${dim("# foreground, default ports, opens dashboard")}
+  ${c.cyan("$ tokenshield up --no-open")}                ${dim("# foreground, skip browser auto-open")}
   ${c.cyan("$ tokenshield up --daemon")}                 ${dim("# background, stop with `tokenshield stop`")}
   ${c.cyan("$ tokenshield up --port 7780")}              ${dim("# different proxy port")}
   ${c.cyan("$ tokenshield up --bind 0.0.0.0 --port 7777")}  ${dim("# expose to LAN (trusted networks only)")}
@@ -100,6 +102,7 @@ program
         ledger: raw["ledger"] ? String(raw["ledger"]) : undefined,
         retentionDays: ensureNumber("retention-days", raw["retentionDays"], 1, 365),
         daemon: raw["daemon"] === true,
+        open: raw["open"] !== false,
       });
     }),
   );
