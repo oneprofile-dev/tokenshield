@@ -3,6 +3,7 @@ import { Command, Option } from "commander";
 import { runUp, runSupervised } from "./commands/up.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runDemo } from "./commands/demo.js";
+import { runBench } from "./commands/bench.js";
 import { runEstimate } from "./commands/estimate.js";
 import { runStatus } from "./commands/status.js";
 import { runStop } from "./commands/stop.js";
@@ -202,6 +203,22 @@ program
   .action((raw: Record<string, unknown>) =>
     runCommand(async () => {
       await runDemo({ live: raw["live"] !== false });
+    }),
+  );
+
+// ── bench ─────────────────────────────────────────────────────────────────────
+program
+  .command("bench")
+  .description("Run TokenShield against recorded request fixtures and report savings")
+  .option("--fixture <name>", "single fixture (light|medium|heavy) or a path to a .json file")
+  .option("--fixtures-dir <dir>", "override the fixtures directory")
+  .addHelpText("after", `\n${c.bold("Examples")}\n  ${c.cyan("$ tokenshield bench")}                ${dim("# all built-in fixtures")}\n  ${c.cyan("$ tokenshield bench --fixture heavy")}\n  ${c.cyan("$ tokenshield --json bench | jq")}\n`)
+  .action((raw: Record<string, unknown>) =>
+    runCommand(async () => {
+      await runBench({
+        ...(raw["fixture"] ? { fixture: String(raw["fixture"]) } : {}),
+        ...(raw["fixturesDir"] ? { fixturesDir: String(raw["fixturesDir"]) } : {}),
+      });
     }),
   );
 

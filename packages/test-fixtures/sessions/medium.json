@@ -1,0 +1,144 @@
+{
+  "name": "medium",
+  "description": "Coding session, 12 turns, 2 file re-reads",
+  "body": {
+    "model": "claude-opus-4-7",
+    "system": "You are Claude Code, Anthropic's official CLI for Claude. You are an interactive agent that helps users with software engineering tasks. Use the instructions below and the tools available to you to assist the user.\n\n# Tools\nYou have access to the following tools: Read (read a file), Edit (replace a string in a file), Write (write a new file), Bash (run a shell command), Grep (search files with ripgrep), Glob (file pattern matching), TodoWrite, Agent (delegate to a subagent).\n\n# Style\n- Keep responses concise.\n- Reference files as path:line.\n- Do not write comments unless asked.\n\n# Doing tasks\n- Plan before editing for non-trivial changes.\n- Always verify your changes with tests.\n- Match existing code style.",
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "role": "user",
+        "content": "Refactor auth.ts so verifyToken takes an audience parameter and rejects when it doesn't match."
+      },
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "tu_1",
+            "name": "Read",
+            "input": {
+              "path": "auth.ts"
+            }
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "tu_1",
+            "content": "import jwt from 'jsonwebtoken';\nimport { db } from './db';\n\nexport interface Session { id: string; userId: string; expiresAt: Date; }\n\nexport async function createSession(userId: string): Promise<Session> {\n  const id = crypto.randomUUID();\n  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);\n  await db.session.create({ data: { id, userId, expiresAt } });\n  return { id, userId, expiresAt };\n}\n\nexport async function verifyToken(token: string, audience: string): Promise<Session | null> {\n  try {\n    const payload = jwt.verify(token, process.env.JWT_SECRET!, { audience }) as { sub: string };\n    const session = await db.session.findUnique({ where: { id: payload.sub } });\n    if (!session || session.expiresAt < new Date()) return null;\n    return session;\n  } catch {\n    return null;\n  }\n}\n\nexport async function revokeSession(id: string): Promise<void> {\n  await db.session.delete({ where: { id } });\n}\n\n// Plus error handlers, middleware adapters, and tests that bring this file to ~4KB of plausible content.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file."
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll update verifyToken to accept and check the audience."
+          },
+          {
+            "type": "tool_use",
+            "id": "tu_2",
+            "name": "Edit",
+            "input": {
+              "file_path": "auth.ts",
+              "old_string": "verifyToken(token: string)",
+              "new_string": "verifyToken(token: string, audience: string)"
+            }
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "tu_2",
+            "content": "File updated successfully."
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "tu_3",
+            "name": "Read",
+            "input": {
+              "path": "auth.ts"
+            }
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "tu_3",
+            "content": "import jwt from 'jsonwebtoken';\nimport { db } from './db';\n\nexport interface Session { id: string; userId: string; expiresAt: Date; }\n\nexport async function createSession(userId: string): Promise<Session> {\n  const id = crypto.randomUUID();\n  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);\n  await db.session.create({ data: { id, userId, expiresAt } });\n  return { id, userId, expiresAt };\n}\n\nexport async function verifyToken(token: string, audience: string): Promise<Session | null> {\n  try {\n    const payload = jwt.verify(token, process.env.JWT_SECRET!, { audience }) as { sub: string };\n    const session = await db.session.findUnique({ where: { id: payload.sub } });\n    if (!session || session.expiresAt < new Date()) return null;\n    return session;\n  } catch {\n    return null;\n  }\n}\n\nexport async function revokeSession(id: string): Promise<void> {\n  await db.session.delete({ where: { id } });\n}\n\n// Plus error handlers, middleware adapters, and tests that bring this file to ~4KB of plausible content.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// (one line changed, otherwise identical)"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "tu_4",
+            "name": "Bash",
+            "input": {
+              "command": "npm test -- auth"
+            }
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "tu_4",
+            "content": "PASS  auth.test.ts (3 tests, 250ms)"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "Tests pass. Let me also check the tests file."
+          },
+          {
+            "type": "tool_use",
+            "id": "tu_5",
+            "name": "Read",
+            "input": {
+              "path": "auth.ts"
+            }
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "tu_5",
+            "content": "import jwt from 'jsonwebtoken';\nimport { db } from './db';\n\nexport interface Session { id: string; userId: string; expiresAt: Date; }\n\nexport async function createSession(userId: string): Promise<Session> {\n  const id = crypto.randomUUID();\n  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);\n  await db.session.create({ data: { id, userId, expiresAt } });\n  return { id, userId, expiresAt };\n}\n\nexport async function verifyToken(token: string, audience: string): Promise<Session | null> {\n  try {\n    const payload = jwt.verify(token, process.env.JWT_SECRET!, { audience }) as { sub: string };\n    const session = await db.session.findUnique({ where: { id: payload.sub } });\n    if (!session || session.expiresAt < new Date()) return null;\n    return session;\n  } catch {\n    return null;\n  }\n}\n\nexport async function revokeSession(id: string): Promise<void> {\n  await db.session.delete({ where: { id } });\n}\n\n// Plus error handlers, middleware adapters, and tests that bring this file to ~4KB of plausible content.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// Padding to bring this file to a realistic size for a representative auth.ts file.\n// (one line changed, otherwise identical)"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": "Done — verifyToken now requires an audience and rejects on mismatch."
+      }
+    ]
+  }
+}

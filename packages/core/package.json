@@ -19,7 +19,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "tsc -p tsconfig.test.json && node --test --enable-source-maps dist-test/test/**/*.test.js",
+    "test": "tsc -p tsconfig.test.json && node --enable-source-maps --test $(find dist-test/test -name '*.test.js')",
     "prepublishOnly": "npm run build"
   },
   "license": "MIT",
