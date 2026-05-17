@@ -37,9 +37,9 @@ interface BenchResult {
 const TOKEN_PER_BYTE = 1 / 3.5; // industry rule-of-thumb for English+code
 
 function defaultFixturesDir(): string {
-  // packages/cli/dist/commands/bench.js — fixtures at ../../../../test-fixtures/sessions
+  // packages/cli/dist/commands/bench.js — bundled fixtures at ../../fixtures/sessions
   const here = dirname(fileURLToPath(import.meta.url));
-  return join(here, "..", "..", "..", "test-fixtures", "sessions");
+  return join(here, "..", "..", "fixtures", "sessions");
 }
 
 async function listFixtures(dir: string): Promise<string[]> {

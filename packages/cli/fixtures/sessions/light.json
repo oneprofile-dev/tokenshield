@@ -1,0 +1,31 @@
+{
+  "name": "light",
+  "description": "Q&A session, 5 turns, no tool use",
+  "body": {
+    "model": "claude-sonnet-4-6",
+    "system": "You are Claude Code, Anthropic's official CLI for Claude. You are an interactive agent that helps users with software engineering tasks. Use the instructions below and the tools available to you to assist the user.\n\n# Tools\nYou have access to the following tools: Read (read a file), Edit (replace a string in a file), Write (write a new file), Bash (run a shell command), Grep (search files with ripgrep), Glob (file pattern matching), TodoWrite, Agent (delegate to a subagent).\n\n# Style\n- Keep responses concise.\n- Reference files as path:line.\n- Do not write comments unless asked.\n\n# Doing tasks\n- Plan before editing for non-trivial changes.\n- Always verify your changes with tests.\n- Match existing code style.",
+    "max_tokens": 1024,
+    "messages": [
+      {
+        "role": "user",
+        "content": "What's the difference between `cache_control` and Anthropic's prompt caching?"
+      },
+      {
+        "role": "assistant",
+        "content": "Prompt caching is the feature; cache_control is the header field that activates it. You set { type: 'ephemeral' } on a content block, and the prefix up to that block is cached for 5 minutes."
+      },
+      {
+        "role": "user",
+        "content": "How do I tell if a cached prefix was actually hit?"
+      },
+      {
+        "role": "assistant",
+        "content": "Inspect the response's usage object — cache_read_input_tokens > 0 means a hit; cache_creation_input_tokens > 0 means a miss that wrote."
+      },
+      {
+        "role": "user",
+        "content": "Thanks."
+      }
+    ]
+  }
+}
