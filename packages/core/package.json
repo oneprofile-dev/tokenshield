@@ -22,6 +22,10 @@
     "test": "tsc -p tsconfig.test.json && node --enable-source-maps --test $(find dist-test/test -name '*.test.js')",
     "prepublishOnly": "npm run build"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oneprofile-dev/tokenshield"
+  },
   "license": "MIT",
   "dependencies": {},
   "devDependencies": {

@@ -25,6 +25,10 @@
     "savings",
     "curatedmcp"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oneprofile-dev/tokenshield"
+  },
   "license": "MIT",
   "dependencies": {
     "@curatedmcp/tokenshield-core": "^0.2.0",
