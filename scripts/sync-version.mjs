@@ -6,7 +6,7 @@
  *   - package.json (root)
  *   - packages/core/package.json
  *   - packages/cli/package.json  (+ @curatedmcp/tokenshield-core dependency)
- *   - packages/cli/src/cli.ts    (VERSION constant)
+ *   - packages/cli/src/version.ts (VERSION constant)
  *
  * Usage:
  *   node scripts/sync-version.mjs          # use version.txt
@@ -51,17 +51,17 @@ patchJson(resolve(root, "packages/cli/package.json"), (pkg) => {
   }
 });
 
-const cliTs = resolve(root, "packages/cli/src/cli.ts");
-const src = readFileSync(cliTs, "utf8");
-const patched = src.replace(
-  /^const VERSION = "[^"]+";/m,
-  `const VERSION = "${version}";`
-);
-if (src === patched) {
-  console.warn("  WARN: VERSION constant not found in cli.ts — check manually");
+const versionTs = resolve(root, "packages/cli/src/version.ts");
+const src = readFileSync(versionTs, "utf8");
+if (!/^export const VERSION = "[^"]+";/m.test(src)) {
+  console.warn("  WARN: VERSION constant not found in version.ts — check manually");
 } else {
-  writeFileSync(cliTs, patched);
-  console.log("  updated packages/cli/src/cli.ts");
+  const patched = src.replace(
+    /^export const VERSION = "[^"]+";/m,
+    `export const VERSION = "${version}";`
+  );
+  writeFileSync(versionTs, patched);
+  console.log("  updated packages/cli/src/version.ts");
 }
 
 // Keep version.txt in sync with whatever version was used

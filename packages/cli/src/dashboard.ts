@@ -1,10 +1,11 @@
-export function dashboardHtml(opts: { proxyPort: number; bind: string }): string {
+export function dashboardHtml(opts: { proxyPort: number; bind: string; version: string }): string {
+  const proxyBase = `http://${opts.bind}:${opts.proxyPort}`;
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>TokenShield — live savings</title>
+<title>TokenShield ${opts.version} — live savings</title>
 <style>
 :root {
   color-scheme: dark light;
@@ -15,6 +16,7 @@ export function dashboardHtml(opts: { proxyPort: number; bind: string }): string
   --text: #e7e9ee;
   --muted: #8b94a3;
   --accent: #6dd3a8;
+  --accent-dim: rgba(109,211,168,0.15);
   --warn: #f0b35e;
   --bad: #ef6868;
   --link: #7eb8ff;
@@ -22,16 +24,35 @@ export function dashboardHtml(opts: { proxyPort: number; bind: string }): string
 * { box-sizing: border-box }
 html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px; }
-h1 { margin: 0; font-size: 18px; letter-spacing: 0.02em; }
-h1 small { color: var(--muted); font-weight: 400; margin-left: 8px; }
-.status { font-size: 12px; color: var(--muted); }
-.status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: var(--accent); margin-right: 6px; vertical-align: middle; }
+
+/* ── header ── */
+header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 12px; }
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand-name { font-size: 18px; font-weight: 700; letter-spacing: 0.02em; color: var(--text); text-decoration: none; }
+.brand-name:hover { color: var(--accent); }
+.brand-by { font-size: 11px; color: var(--muted); font-weight: 400; letter-spacing: 0.02em; }
+.brand-by a { color: var(--accent); text-decoration: none; font-weight: 500; }
+.brand-by a:hover { text-decoration: underline; }
+.brand-ver { font-size: 12px; color: var(--muted); font-weight: 400; }
+.status { display: flex; align-items: center; gap: 14px; }
+.status-pill { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: var(--accent); flex-shrink: 0; }
+.dot.pulse { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.45 } }
+
+/* ── metric cards ── */
 .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
 .card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .card .value { font-size: 22px; font-weight: 600; margin-top: 6px; font-variant-numeric: tabular-nums; }
 .card .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* ── savings highlight card ── */
+.card.savings { border-color: rgba(109,211,168,0.25); background: linear-gradient(135deg, var(--panel) 0%, rgba(109,211,168,0.06) 100%); }
+.card.savings .value { color: var(--accent); }
+.card.savings .label { color: rgba(109,211,168,0.7); }
+
+/* ── tables ── */
 .section { margin-top: 24px; }
 .section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 10px; }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
@@ -43,22 +64,42 @@ tr:last-child td { border-bottom: 0; }
 .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--border); }
 .pill.ok { color: var(--accent); border-color: rgba(109,211,168,0.35); }
 .pill.err { color: var(--bad); border-color: rgba(239,104,104,0.35); }
+
+/* ── misc ── */
 .cmd { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
-.footer { color: var(--muted); font-size: 12px; margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border); }
 .kbd { font-family: ui-monospace, monospace; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 11px; }
 a { color: var(--link); text-decoration: none; }
 a:hover { text-decoration: underline; }
+
+/* ── footer ── */
+.footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.footer-privacy { color: var(--muted); font-size: 12px; flex: 1 1 400px; }
+.footer-links { display: flex; align-items: center; gap: 14px; flex-shrink: 0; flex-wrap: wrap; }
+.footer-links a { font-size: 12px; color: var(--muted); text-decoration: none; white-space: nowrap; }
+.footer-links a:hover { color: var(--accent); text-decoration: none; }
+.footer-links .sep { color: var(--border); user-select: none; }
+.upgrade-link { color: var(--accent) !important; font-weight: 500; }
 </style>
 </head>
 <body>
 <div class="wrap">
+
   <header>
-    <h1>TokenShield <small>v0.1 — Estimate mode</small></h1>
-    <div class="status"><span class="dot"></span><span id="status-text">proxy live on ${opts.bind}:${opts.proxyPort}</span></div>
+    <div class="brand">
+      <a class="brand-name" href="https://www.curatedmcp.com/tokenshield" target="_blank" rel="noopener">TokenShield</a>
+      <span class="brand-ver">v${opts.version}</span>
+      <span class="brand-by">by <a href="https://www.curatedmcp.com" target="_blank" rel="noopener">CuratedMCP</a></span>
+    </div>
+    <div class="status">
+      <div class="status-pill">
+        <span class="dot pulse"></span>
+        <span id="status-text">proxy live · ${opts.bind}:${opts.proxyPort}</span>
+      </div>
+    </div>
   </header>
 
   <div class="grid">
-    <div class="card">
+    <div class="card savings">
       <div class="label">Spent (24h)</div>
       <div class="value" id="dollars-spent">$0.00</div>
       <div class="sub" id="request-count">0 requests</div>
@@ -92,7 +133,7 @@ a:hover { text-decoration: underline; }
           <th class="num">$</th>
         </tr>
       </thead>
-      <tbody><tr><td colspan="5" class="muted">No traffic yet. Run Claude Code with <span class="kbd">ANTHROPIC_BASE_URL=http://${opts.bind}:${opts.proxyPort}</span>.</td></tr></tbody>
+      <tbody><tr><td colspan="5" class="muted">No traffic yet. Run Claude Code with <span class="kbd">ANTHROPIC_BASE_URL=${proxyBase}</span>.</td></tr></tbody>
     </table>
   </div>
 
@@ -116,9 +157,19 @@ a:hover { text-decoration: underline; }
   </div>
 
   <div class="footer">
-    Privacy: TokenShield never stores prompt content. Your Anthropic API key stays in process memory.
-    Set <span class="cmd">export ANTHROPIC_BASE_URL=http://${opts.bind}:${opts.proxyPort}</span> in the shell you run Claude Code from.
+    <div class="footer-privacy">
+      Privacy: TokenShield never stores prompt content. Your Anthropic API key stays in process memory.
+      Set <span class="cmd">export ANTHROPIC_BASE_URL=${proxyBase}</span> in the shell you run Claude Code from.
+    </div>
+    <div class="footer-links">
+      <a href="https://www.curatedmcp.com/tokenshield" target="_blank" rel="noopener">curatedmcp.com/tokenshield</a>
+      <span class="sep">·</span>
+      <a href="https://www.curatedmcp.com/docs/tokenshield" target="_blank" rel="noopener">Docs</a>
+      <span class="sep">·</span>
+      <a href="https://www.curatedmcp.com/pricing" target="_blank" rel="noopener" class="upgrade-link">Upgrade →</a>
+    </div>
   </div>
+
 </div>
 
 <script>
@@ -140,7 +191,7 @@ async function refresh() {
     const rec = await recRes.json();
     // Successful refresh — clear any stale error and restore the live indicator
     const statusEl = document.getElementById('status-text');
-    if (statusEl) statusEl.textContent = 'live';
+    if (statusEl) statusEl.textContent = 'live · ${opts.bind}:${opts.proxyPort}';
 
     document.getElementById('dollars-spent').textContent = fmtDollars(sum.dollarsRaw);
     document.getElementById('request-count').textContent = fmtNum(sum.requestCount) + ' requests';
@@ -179,7 +230,7 @@ async function refresh() {
       }).join('');
     }
   } catch (e) {
-    document.getElementById('status-text').textContent = 'dashboard error: ' + e.message;
+    document.getElementById('status-text').textContent = 'error: ' + e.message;
   }
 }
 

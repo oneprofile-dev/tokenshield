@@ -1,6 +1,7 @@
 import { start, defaultConfig } from "@curatedmcp/tokenshield-core";
 import type { ProxyConfig } from "@curatedmcp/tokenshield-core";
 import { dashboardHtml } from "../dashboard.js";
+import { VERSION } from "../version.js";
 import { c, sym, box, link, say, emit, dim } from "../lib/ui.js";
 import { firstRunBanner, isFirstRun, markFirstRunComplete, telemetry } from "@curatedmcp/tokenshield-core";
 import { TokenShieldError } from "../lib/errors.js";
@@ -111,7 +112,7 @@ export async function runUp(options: UpOptions): Promise<void> {
   // Foreground mode
   const handle = await start({
     config,
-    renderDashboard: () => dashboardHtml({ proxyPort: config.port, bind: config.bind }),
+    renderDashboard: () => dashboardHtml({ proxyPort: config.port, bind: config.bind, version: VERSION }),
   });
 
   emit(banner(config, { daemon: false }));
@@ -169,7 +170,7 @@ export async function runSupervised(options: UpOptions): Promise<void> {
   });
   const handle = await start({
     config,
-    renderDashboard: () => dashboardHtml({ proxyPort: config.port, bind: config.bind }),
+    renderDashboard: () => dashboardHtml({ proxyPort: config.port, bind: config.bind, version: VERSION }),
   });
   const shutdown = async (signal: string): Promise<void> => {
     process.stderr.write(`[tokenshield] caught ${signal}, shutting down\n`);

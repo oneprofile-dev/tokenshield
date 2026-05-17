@@ -19,10 +19,9 @@ import { runTelemetry } from "./commands/telemetry.js";
 import type { IntegrationId } from "./lib/integrations.js";
 import { setOutputMode, c, dim, emit, isJson } from "./lib/ui.js";
 import { ensureNumber, runCommand, installProcessHandlers } from "./lib/errors.js";
+import { VERSION } from "./version.js";
 
 installProcessHandlers();
-
-const VERSION = "1.0.0";
 
 const program = new Command();
 
