@@ -19,6 +19,30 @@ function settingsFile(): string {
   return join(telemetryDir(), "settings.json");
 }
 
+function licenseFile(): string {
+  return join(telemetryDir(), "license.json");
+}
+
+/**
+ * Returns the Pro/Team license token stored by `tokenshield login`, or null
+ * if the user is on the free tier. Tags telemetry batches so the cloud
+ * dashboard can show the licensee's own machines.
+ *
+ * Read on every flush (not cached) so logout/login takes effect immediately
+ * without restarting the proxy.
+ */
+function readLicenseToken(): string | null {
+  const file = licenseFile();
+  if (!existsSync(file)) return null;
+  try {
+    const raw = readFileSync(file, "utf8");
+    const parsed = JSON.parse(raw) as { token?: unknown };
+    return typeof parsed.token === "string" && parsed.token.length > 0 ? parsed.token : null;
+  } catch {
+    return null;
+  }
+}
+
 interface Settings {
   telemetry: "on" | "off";
   anonId: string;
@@ -225,6 +249,8 @@ export class Telemetry {
 
     const cliVersion = process.env["npm_package_version"] ?? "unknown";
 
+    const licenseToken = readLicenseToken();
+
     const payload = {
       anonId: getAnonId(),
       cliVersion,
@@ -242,6 +268,8 @@ export class Telemetry {
       topModel: topModel ?? undefined,
       client: snap.client ?? undefined,
       teamDeployment: snap.teamDeployment,
+      // Pro/Team association — only present if `tokenshield login` ran
+      ...(licenseToken ? { licenseToken } : {}),
     };
 
     try {

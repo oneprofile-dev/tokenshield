@@ -1,6 +1,6 @@
 {
   "name": "@curatedmcp/tokenshield-core",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "TokenShield proxy engine — Anthropic API-layer middleware with token accounting",
   "type": "module",
   "main": "./dist/index.js",
