@@ -17,6 +17,7 @@ import {
 } from "./commands/integrations.js";
 import { runTelemetry } from "./commands/telemetry.js";
 import { runLogin, runLogout, runWhoami } from "./commands/login.js";
+import { runRun } from "./commands/run.js";
 import type { IntegrationId } from "./lib/integrations.js";
 import { setOutputMode, c, dim, emit, isJson } from "./lib/ui.js";
 import { ensureNumber, runCommand, installProcessHandlers } from "./lib/errors.js";
@@ -286,6 +287,44 @@ integrations
   .action((target: string) =>
     runCommand(() => runIntegrationsDisable(target as "shell" | IntegrationId)),
   );
+
+// ── run ──────────────────────────────────────────────────────────────────────
+// Wraps any AI tool (default: claude) with the right env + Keychain bypass.
+// THIS IS THE COMMAND that makes TokenShield work on Pro/Max subscriptions.
+program
+  .command("run")
+  .description("Run claude (or any tool) routed through TokenShield with strict API-key auth")
+  .option("--cmd <command>", "command to invoke (default: claude)")
+  .option("--no-bare", "don't auto-inject --bare for claude (allows Keychain — usually wrong)")
+  .option("--force", "skip the 'is the proxy running?' check", false)
+  .allowUnknownOption(true)
+  .addHelpText(
+    "after",
+    `\n${c.bold("Examples")}
+  ${c.cyan("$ tokenshield run -- \\\"explain this codebase\\\"")}
+        ${dim("# routes claude through proxy, with Keychain bypassed via --bare")}
+  ${c.cyan("$ tokenshield run -- --model claude-haiku-4-5 \\\"hi\\\"")}
+        ${dim("# all post-`--` args pass through to claude untouched")}
+  ${c.cyan("$ tokenshield run --cmd cursor-cli -- chat")}
+        ${dim("# wrap a different tool (--bare auto-inject skipped for non-claude)")}
+
+${c.bold("Why this exists")}
+  Claude Code stores OAuth tokens in your macOS Keychain after \`claude login\`.
+  Those tokens override ANTHROPIC_API_KEY and bypass the proxy entirely,
+  producing silent 401s with no obvious cause. \`tokenshield run\` invokes
+  \`claude --bare\` which strictly uses ANTHROPIC_API_KEY (no Keychain reads).
+`,
+  )
+  .action((options: Record<string, unknown>, cmd: { args: string[] }) => {
+    runCommand(() =>
+      runRun({
+        passthroughArgs: cmd.args,
+        ...(options["cmd"] ? { command: String(options["cmd"]) } : {}),
+        noBare: options["bare"] === false,
+        force: options["force"] === true,
+      }),
+    );
+  });
 
 // ── login / logout / whoami ───────────────────────────────────────────────────
 program

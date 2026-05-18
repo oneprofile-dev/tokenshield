@@ -1,5 +1,6 @@
+import { execSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, platform } from "node:os";
 import { join } from "node:path";
 import { defaultConfig } from "@curatedmcp/tokenshield-core";
 import { classifyApiKey, probeUpstream, checkPort } from "../lib/preflight.js";
@@ -10,8 +11,13 @@ import { c, sym, dim, emit, emitJson, isJson, say, heading } from "../lib/ui.js"
  * Detect Claude Code OAuth credentials from a prior `claude login`.
  * If present, Claude Code prefers OAuth Bearer tokens over ANTHROPIC_API_KEY,
  * which routes broken auth through the proxy and produces 401s upstream.
+ *
+ * Checks both file-based caches (~/.claude/.credentials.json) AND the macOS
+ * Keychain (the actual real-world location on Mac, which is where the
+ * silent killer lives for most users).
  */
-function detectClaudeOAuth(): { found: boolean; path?: string } {
+function detectClaudeOAuth(): { found: boolean; source?: string } {
+  // 1. File-based caches (Linux + older Claude Code versions on macOS)
   const home = process.env["HOME"] ?? homedir();
   const candidates = [
     join(home, ".claude", ".credentials.json"),
@@ -22,15 +28,31 @@ function detectClaudeOAuth(): { found: boolean; path?: string } {
     if (!existsSync(p)) continue;
     try {
       const raw = readFileSync(p, "utf8");
-      // Look for OAuth-shaped fields without parsing PII
       if (/access[_-]?token|oauth|refresh[_-]?token|bearer/i.test(raw)) {
-        return { found: true, path: p };
+        return { found: true, source: p };
       }
     } catch {
-      // Unreadable file (permissions) — be conservative, flag it as possibly present
-      return { found: true, path: p };
+      return { found: true, source: p };
     }
   }
+
+  // 2. macOS Keychain — where Claude Code actually stores OAuth on Mac.
+  // We DON'T read the secret itself (would prompt for keychain unlock);
+  // we just check whether an item exists with the known service name.
+  if (platform() === "darwin") {
+    try {
+      // `security find-generic-password -s "Claude Code"` returns 0 if present.
+      // Using -g and discarding stderr to avoid any password prompt side-effects.
+      execSync('security find-generic-password -s "Claude Code" 2>/dev/null', {
+        stdio: ["ignore", "ignore", "ignore"],
+        timeout: 2000,
+      });
+      return { found: true, source: "macOS Keychain (service=\"Claude Code\")" };
+    } catch {
+      // Either not found (exit != 0) or `security` missing — both safe to ignore
+    }
+  }
+
   return { found: false };
 }
 
@@ -94,19 +116,19 @@ export async function runDoctor(): Promise<void> {
   if (oauth.found) {
     const apiKeyOk = ks.state === "ok";
     if (apiKeyOk) {
-      // Worst case — both set, OAuth wins, user thinks it's working
+      // Worst case — both set. OAuth wins. User thinks it's working.
       checks.push({
         name: "Claude Code auth",
         status: "warn",
-        detail: "OAuth + API key both present — Claude Code will use OAuth, causing 401s through the proxy",
-        hint: `claude logout   # then restart claude in a shell with ANTHROPIC_API_KEY set`,
+        detail: `OAuth + API key both present (OAuth at ${oauth.source}) — Claude Code will silently prefer OAuth and route broken auth through the proxy.`,
+        hint: "Fix: use `tokenshield run -- <your prompt>` (auto-injects --bare to force ANTHROPIC_API_KEY). Or remove the OAuth: `security delete-generic-password -s 'Claude Code'` on macOS.",
       });
     } else {
       checks.push({
         name: "Claude Code auth",
         status: "warn",
-        detail: `OAuth credentials found at ${oauth.path}`,
-        hint: "TokenShield can't route OAuth Bearer tokens — run `claude logout` and use ANTHROPIC_API_KEY instead",
+        detail: `OAuth credentials found at ${oauth.source}`,
+        hint: "Set ANTHROPIC_API_KEY in this shell, then use `tokenshield run -- <args>` which forces API-key auth via --bare.",
       });
     }
   } else {

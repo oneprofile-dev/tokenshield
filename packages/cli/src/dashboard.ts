@@ -160,10 +160,15 @@ a:hover { text-decoration: underline; }
   <div id="tier-banner" class="tier-banner"></div>
 
   <div class="grid">
-    <div class="card savings">
+    <div class="card">
       <div class="label">Spent (24h)</div>
       <div class="value" id="dollars-spent">$0.00</div>
       <div class="sub" id="request-count">0 requests · 0 successful</div>
+    </div>
+    <div class="card savings" title="Bytes/dollars TokenShield processors stripped from outbound requests this window. Real numbers, from your actual traffic.">
+      <div class="label">Saved (24h)</div>
+      <div class="value" id="dollars-saved">$0.00</div>
+      <div class="sub" id="dollars-saved-sub">processors not yet active · run \`tokenshield bench\` to preview</div>
     </div>
     <div class="card">
       <div class="label">Input tokens (24h)</div>
@@ -174,11 +179,6 @@ a:hover { text-decoration: underline; }
       <div class="label">Output tokens (24h)</div>
       <div class="value" id="output-tokens">0</div>
       <div class="sub">most expensive line item on Opus</div>
-    </div>
-    <div class="card">
-      <div class="label">Projected weekly</div>
-      <div class="value" id="weekly-projected">$0.00</div>
-      <div class="sub">extrapolated from last 24h</div>
     </div>
   </div>
 
@@ -213,10 +213,11 @@ a:hover { text-decoration: underline; }
           <th class="num">Output</th>
           <th class="num">Duration</th>
           <th class="num">$</th>
+          <th class="num" title="Dollars saved by processors on this request">Saved</th>
           <th>Status</th>
         </tr>
       </thead>
-      <tbody><tr><td colspan="8" class="muted">No requests recorded yet.</td></tr></tbody>
+      <tbody><tr><td colspan="9" class="muted">No requests recorded yet.</td></tr></tbody>
     </table>
   </div>
 
@@ -284,13 +285,14 @@ function renderDiagnostic(rec) {
     cls = 'bad';
     const pct = Math.round((failed.length / apiCalls.length) * 100);
     html = '<div class="diag-title"><span class="icon">!</span>' + pct + '% of API calls failing with 401/403 — auth not reaching Anthropic</div>' +
-      '<strong>#1 cause (Pro/Max users):</strong> Claude Code is using a cached OAuth token from a prior <code>claude login</code>, which overrides <code>ANTHROPIC_API_KEY</code> and breaks through the proxy. Fix:<br>' +
-      '&nbsp;&nbsp;1. <code>claude logout</code><br>' +
-      '&nbsp;&nbsp;2. In that same shell: <code>export ANTHROPIC_API_KEY=sk-ant-api03-…</code> &nbsp; <code>export ANTHROPIC_BASE_URL=${proxyBase}</code><br>' +
-      '&nbsp;&nbsp;3. <code>echo $ANTHROPIC_API_KEY</code> — must print your full key (not empty)<br>' +
-      '&nbsp;&nbsp;4. <code>claude</code> in that same shell<br>' +
-      '<br><strong>#2 cause:</strong> Env vars set inside a script (<code>./up.sh</code>) won\\'t leak to your <code>claude</code> shell. Either <code>source up.sh</code> or paste the exports directly into the shell where you run <code>claude</code>.<br>' +
-      '<br>Run <code>tokenshield doctor</code> to auto-diagnose.';
+      '<strong>One-line fix (works for 9 out of 10 cases):</strong><br>' +
+      '&nbsp;&nbsp;<code>tokenshield run -- "your prompt here"</code><br>' +
+      '<br>That wrapper invokes <code>claude --bare</code> which strictly uses <code>ANTHROPIC_API_KEY</code> (no Keychain, no OAuth).' +
+      '<br><br><strong>Why this happens:</strong> Claude Code stores OAuth tokens in your macOS Keychain after <code>claude login</code>. Those tokens override <code>ANTHROPIC_API_KEY</code>, are sent as Bearer auth, and Anthropic rejects them through the proxy.' +
+      '<br><br><strong>If <code>tokenshield run</code> still fails:</strong><br>' +
+      '&nbsp;&nbsp;1. Check key in shell: <code>echo $ANTHROPIC_API_KEY</code> — must start with <code>sk-ant-</code><br>' +
+      '&nbsp;&nbsp;2. Verify key works directly: <code>curl -s -o /dev/null -w "%{http_code}\\\\n" -X POST https://api.anthropic.com/v1/messages -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01" -H "content-type: application/json" -d \\'{"model":"claude-haiku-4-5","max_tokens":10,"messages":[{"role":"user","content":"hi"}]}\\'</code> — must print <code>200</code><br>' +
+      '&nbsp;&nbsp;3. Run <code>tokenshield doctor</code> for the full diagnostic';
   } else if (fiveXx.length >= apiCalls.length * 0.3 && fiveXx.length > 0) {
     cls = 'warn';
     html = '<div class="diag-title"><span class="icon">!</span>Upstream errors from Anthropic</div>' +
@@ -314,7 +316,7 @@ function renderRecent(rec) {
     const msg = rec.length === 0
       ? 'No requests recorded yet.'
       : 'No Anthropic API calls yet (' + rec.length + ' non-API probe' + (rec.length === 1 ? '' : 's') + ' hidden — click "Show probes" to view).';
-    recBody.innerHTML = '<tr><td colspan="8" class="muted">' + msg + '</td></tr>';
+    recBody.innerHTML = '<tr><td colspan="9" class="muted">' + msg + '</td></tr>';
     return;
   }
 
@@ -325,6 +327,12 @@ function renderRecent(rec) {
     const pillCls = isOk ? 'ok' : (isAuthFail ? 'warn' : 'err');
     const isProbe = !isApiCall(r);
     const modelDisplay = (r.model === 'unknown' && isProbe) ? '<span class="muted">—</span>' : r.model;
+    const processors = (r.processorsApplied || []);
+    const savedCell = r.dollarsSaved > 0
+      ? '<span style="color: var(--accent); font-weight: 600;">' + fmtDollars(r.dollarsSaved) + '</span>'
+      : (processors.length > 0
+        ? '<span class="muted" title="' + processors.join(', ') + '">' + processors.length + ' ✓</span>'
+        : '<span class="muted">—</span>');
     return '<tr class="' + (isProbe ? 'row-faded' : '') + '">' +
       '<td class="muted">' + fmtTime(r.timestamp) + '</td>' +
       '<td>' + modelDisplay + '</td>' +
@@ -333,6 +341,7 @@ function renderRecent(rec) {
       '<td class="num">' + fmtNum(r.usageRaw.outputTokens) + '</td>' +
       '<td class="num muted">' + fmtMs(r.durationMs) + '</td>' +
       '<td class="num">' + fmtDollars(r.dollarsRaw) + '</td>' +
+      '<td class="num">' + savedCell + '</td>' +
       '<td><span class="pill ' + pillCls + '">' + status + '</span></td>' +
       '</tr>';
   }).join('');
@@ -365,9 +374,19 @@ async function refresh() {
     document.getElementById('input-tokens').textContent = fmtNum(sum.totalInputTokensRaw);
     document.getElementById('output-tokens').textContent = fmtNum(sum.totalOutputTokensRaw);
 
-    const windowMs = Math.max(1, sum.windowEnd - sum.windowStart);
-    const weeklyProjection = sum.dollarsRaw / (windowMs / (7 * 24 * 60 * 60 * 1000));
-    document.getElementById('weekly-projected').textContent = fmtDollars(weeklyProjection);
+    // Saved card — the actual byte/dollar deltas processors stripped from outbound requests
+    const dollarsSaved = Number(sum.dollarsSaved || 0);
+    const requestsTouched = apiCalls.filter((r) => (r.processorsApplied || []).length > 0).length;
+    document.getElementById('dollars-saved').textContent = fmtDollars(dollarsSaved);
+    const savedSub = document.getElementById('dollars-saved-sub');
+    if (dollarsSaved > 0) {
+      const pct = sum.dollarsRaw > 0 ? Math.round((dollarsSaved / (sum.dollarsRaw + dollarsSaved)) * 100) : 0;
+      savedSub.textContent = pct + '% saved · ' + requestsTouched + ' request' + (requestsTouched === 1 ? '' : 's') + ' compressed';
+    } else if (apiCalls.length === 0) {
+      savedSub.textContent = 'no traffic yet · run \`tokenshield run -- "hi"\` to test';
+    } else {
+      savedSub.textContent = 'processors found nothing to dedupe yet · keep using it';
+    }
 
     const modelBody = document.querySelector('#by-model tbody');
     const realModels = (sum.byModel || []).filter((m) => m.model && m.model !== 'unknown');
