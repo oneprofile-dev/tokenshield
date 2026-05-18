@@ -218,6 +218,14 @@ export async function handleAnthropicRequest(
   const headers = copyHeaders(req.headers);
   headers["host"] = upstream.host;
   headers["content-length"] = String(outboundBytes.length);
+  // Force identity encoding so the accounting layer can parse the response
+  // body for token usage. Without this, gzip-compressed upstream responses
+  // sail through to the client (fine) but JSON.parse on the compressed
+  // bytes silently fails → input/output tokens stay at 0, dollar accounting
+  // reads $0.00 even for successful requests. The bytes-on-wire savings
+  // from gzip don't matter for localhost or even for a small enterprise
+  // proxy; reliable measurement does.
+  headers["accept-encoding"] = "identity";
 
   let upstreamStatus = 0;
   let upstreamError: string | null = null;

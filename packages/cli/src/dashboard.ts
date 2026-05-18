@@ -267,7 +267,14 @@ function toggleNoise() {
 
 function renderDiagnostic(rec) {
   const diag = document.getElementById('diag');
-  const apiCalls = rec.filter(isApiCall);
+  // Only consider the most-recent API calls so a few stale 401s from a prior
+  // misconfiguration don't keep the banner stuck on after the user fixed
+  // things. Sort by timestamp desc, take last 10.
+  const apiCalls = rec
+    .filter(isApiCall)
+    .slice()
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+    .slice(0, 10);
   const failed = apiCalls.filter((r) => r.upstreamStatus === 401 || r.upstreamStatus === 403);
   const fiveXx = apiCalls.filter((r) => r.upstreamStatus >= 500);
   const ok = apiCalls.filter((r) => r.upstreamStatus >= 200 && r.upstreamStatus < 300);
