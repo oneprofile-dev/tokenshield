@@ -1,9 +1,34 @@
 import { spawn } from "node:child_process";
+import { createConnection } from "node:net";
 import { defaultConfig } from "@curatedmcp/tokenshield-core";
 import { c, sym, dim, emit, say } from "../lib/ui.js";
 import { TokenShieldError } from "../lib/errors.js";
 import { readDaemon } from "../lib/daemon.js";
 import { classifyApiKey } from "../lib/preflight.js";
+
+/**
+ * Probe whether the proxy port is actually accepting TCP connections.
+ * Works for both daemon AND foreground modes — the previous daemon-file
+ * check missed foreground proxies and produced false negatives.
+ */
+async function isProxyAlive(host: string, port: number, timeoutMs = 800): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = createConnection({ host, port });
+    const t = setTimeout(() => {
+      socket.destroy();
+      resolve(false);
+    }, timeoutMs);
+    socket.once("connect", () => {
+      clearTimeout(t);
+      socket.end();
+      resolve(true);
+    });
+    socket.once("error", () => {
+      clearTimeout(t);
+      resolve(false);
+    });
+  });
+}
 
 export interface RunOptions {
   /** Forwarded argv after the `--`. First element may be the command name (defaults to `claude`). */
@@ -33,32 +58,46 @@ export async function runRun(options: RunOptions): Promise<void> {
 
   // ── 1. Refuse to run if no proxy is live (unless --force) ────────────────
   if (!options.force) {
+    // Check by ACTUALLY connecting to the proxy port, not just looking for
+    // a daemon pidfile. This way foreground `tokenshield up` in another
+    // terminal works too — which is what most users actually do first.
     const daemon = readDaemon();
-    if (daemon === null) {
+    const portAlive = await isProxyAlive(cfg.bind, cfg.port);
+
+    if (!portAlive) {
+      const hint = daemon
+        ? `A daemon record exists at pid ${daemon.pid} but the proxy isn't responding on ${cfg.bind}:${cfg.port}. Try \`tokenshield stop\` then \`tokenshield up --daemon\`.`
+        : `Port ${cfg.port} isn't accepting connections.`;
       throw new TokenShieldError({
         code: "DAEMON_NOT_RUNNING",
-        message: "No TokenShield proxy is running. Requests would bypass the proxy entirely.",
+        message: "No TokenShield proxy is responding. Requests would bypass the proxy entirely.",
+        hint,
         nextSteps: [
-          "tokenshield up --daemon   # start the proxy in the background",
-          "tokenshield run -- <args> # then re-run this command",
-          "# or pass --force to run anyway (defeats the purpose)",
+          "Option A (recommended): in a separate terminal, run `tokenshield up --daemon`",
+          "Option B: in another terminal, run `tokenshield up` (foreground) and keep it open",
+          "Then re-run: tokenshield run -- <args>",
+          "# Or pass --force to send the request directly to Anthropic (no measurement, no savings)",
         ],
       });
     }
   }
 
-  // ── 2. Require ANTHROPIC_API_KEY in this shell ───────────────────────────
+  // ── 2. Require ANTHROPIC_API_KEY in THIS shell ───────────────────────────
+  // (env vars don't cross shells. If the user set it in the shell where
+  // they ran `tokenshield up`, it doesn't help in THIS shell.)
   const apiKey = process.env["ANTHROPIC_API_KEY"];
   const cls = classifyApiKey(apiKey);
   if (cls.state !== "ok") {
     throw new TokenShieldError({
       code: "MISSING_API_KEY",
-      message: "ANTHROPIC_API_KEY is not set (or has the wrong prefix) in this shell.",
+      message: "ANTHROPIC_API_KEY is not set in THIS shell (env vars don't cross terminal tabs).",
       hint: cls.hint,
       nextSteps: [
-        "1. Get an API key: https://console.anthropic.com/settings/keys",
-        "2. export ANTHROPIC_API_KEY=sk-ant-api03-...",
-        "3. tokenshield run -- <your command>",
+        "In this same shell, paste your key:",
+        "  export ANTHROPIC_API_KEY=sk-ant-api03-...your-key-from-console.anthropic.com...",
+        "Then re-run: tokenshield run -- <your prompt>",
+        "",
+        "Tip: add the export to your ~/.zshrc so it's permanent across all new terminals.",
       ],
     });
   }
