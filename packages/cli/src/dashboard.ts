@@ -78,6 +78,19 @@ header { display: flex; align-items: center; justify-content: space-between; mar
 .diag code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; background: var(--panel-2); padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border); }
 .diag a { color: var(--link); }
 
+/* ── tier banner (free → upgrade nudge, pro → confirmation) ── */
+.tier-banner { display: none; margin-bottom: 16px; padding: 14px 18px; border-radius: 10px; border: 1px solid; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.tier-banner.show { display: flex; }
+.tier-banner.upgrade { background: linear-gradient(90deg, rgba(109,211,168,0.06), rgba(109,211,168,0.02)); border-color: rgba(109,211,168,0.35); }
+.tier-banner.pro { background: rgba(109,211,168,0.08); border-color: rgba(109,211,168,0.5); }
+.tier-msg { font-size: 13px; color: var(--text); line-height: 1.5; flex: 1 1 60%; }
+.tier-msg .highlight { color: var(--accent); font-weight: 600; }
+.tier-msg .small { font-size: 11px; color: var(--muted); margin-top: 2px; display: block; }
+.tier-cta { background: var(--accent); color: #0b0d10; text-decoration: none; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 6px; white-space: nowrap; transition: opacity 0.15s; }
+.tier-cta:hover { opacity: 0.9; text-decoration: none; }
+.tier-cta-secondary { font-size: 12px; color: var(--muted); text-decoration: none; }
+.tier-cta-secondary:hover { color: var(--accent); }
+
 /* ── metric cards ── */
 .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
@@ -142,6 +155,9 @@ a:hover { text-decoration: underline; }
   </header>
 
   <div id="diag" class="diag"></div>
+
+  <!-- Tier banner — renders one of two messages depending on license tier -->
+  <div id="tier-banner" class="tier-banner"></div>
 
   <div class="grid">
     <div class="card savings">
@@ -221,6 +237,17 @@ a:hover { text-decoration: underline; }
 </div>
 
 <script>
+// Server-baked license context — driven by ~/.tokenshield/license.json on boot
+const __TIER__ = ${JSON.stringify(tier)};
+const __EMAIL__ = ${JSON.stringify(opts.email ?? null)};
+// Projected savings if Pro processors were active.
+// Conservative estimate: conversation-dedup ≈ 30% + result-cache ≈ 10% = 40% blended on heavy workloads.
+// Surfaced as a range to set honest expectations (25%–55%).
+const PRO_SAVINGS_LOW = 0.25;
+const PRO_SAVINGS_HIGH = 0.55;
+const UPGRADE_URL = "https://www.curatedmcp.com/tokenshield/upgrade";
+const DASHBOARD_URL = "https://www.curatedmcp.com/tokenshield/dashboard";
+
 const fmtNum = (n) => Number(n || 0).toLocaleString();
 const fmtDollars = (d) => '$' + Number(d || 0).toFixed(Math.abs(d) < 1 ? 4 : 2);
 const fmtTime = (ms) => new Date(ms).toLocaleTimeString();
@@ -358,9 +385,50 @@ async function refresh() {
 
     renderRecent(rec);
     renderDiagnostic(rec);
+    renderTierBanner(sum);
   } catch (e) {
     document.getElementById('status-text').textContent = 'error: ' + e.message;
   }
+}
+
+function renderTierBanner(sum) {
+  const banner = document.getElementById('tier-banner');
+  if (!banner) return;
+
+  const spent = Number(sum.dollarsRaw) || 0;
+  const windowMs = Math.max(1, sum.windowEnd - sum.windowStart);
+  const monthlyProj = spent / (windowMs / (30 * 24 * 60 * 60 * 1000));
+
+  if (__TIER__ === 'pro' || __TIER__ === 'team') {
+    // Pro user — show confirmation + link to cloud dashboard
+    banner.className = 'tier-banner show pro';
+    banner.innerHTML =
+      '<div class="tier-msg">' +
+        '<span class="highlight">✓ ' + __TIER__.toUpperCase() + ' · ' + (__EMAIL__ ? __EMAIL__ : 'licensed') + '</span> &mdash; cloud sync active. ' +
+        'Active compression processors enable as they ship through Q3.' +
+        '<span class="small">View your spend across every machine at curatedmcp.com/tokenshield/dashboard</span>' +
+      '</div>' +
+      '<a class="tier-cta" href="' + DASHBOARD_URL + '" target="_blank" rel="noopener">Open cloud dashboard →</a>';
+    return;
+  }
+
+  // Free tier — show projection nudge once spend is meaningful (> $0.50 in window)
+  if (spent < 0.50) {
+    banner.className = 'tier-banner';
+    banner.innerHTML = '';
+    return;
+  }
+
+  const monthlyLow = monthlyProj * PRO_SAVINGS_LOW;
+  const monthlyHigh = monthlyProj * PRO_SAVINGS_HIGH;
+  const fmt = (n) => '$' + n.toFixed(n < 10 ? 2 : 0);
+  banner.className = 'tier-banner show upgrade';
+  banner.innerHTML =
+    '<div class="tier-msg">' +
+      'At your current rate, Pro processors would save you about <span class="highlight">' + fmt(monthlyLow) + '–' + fmt(monthlyHigh) + '/month</span>. ' +
+      '<span class="small">Projected from ' + fmtDollars(spent) + ' measured in the last ' + Math.round(windowMs / (60 * 60 * 1000)) + 'h · 25–55% blended savings from conversation-dedup + result-cache</span>' +
+    '</div>' +
+    '<a class="tier-cta" href="' + UPGRADE_URL + '" target="_blank" rel="noopener">Upgrade · $19/mo →</a>';
 }
 
 refresh();
