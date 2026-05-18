@@ -16,6 +16,7 @@ import {
   runIntegrationsDisable,
 } from "./commands/integrations.js";
 import { runTelemetry } from "./commands/telemetry.js";
+import { runLogin, runLogout, runWhoami } from "./commands/login.js";
 import type { IntegrationId } from "./lib/integrations.js";
 import { setOutputMode, c, dim, emit, isJson } from "./lib/ui.js";
 import { ensureNumber, runCommand, installProcessHandlers } from "./lib/errors.js";
@@ -285,6 +286,29 @@ integrations
   .action((target: string) =>
     runCommand(() => runIntegrationsDisable(target as "shell" | IntegrationId)),
   );
+
+// ── login / logout / whoami ───────────────────────────────────────────────────
+program
+  .command("login")
+  .description("Link this machine to your TokenShield Pro license")
+  .option("--token <token>", "license token from curatedmcp.com/tokenshield/connect")
+  .addHelpText(
+    "after",
+    `\n${c.bold("How to get a token")}\n  1. ${c.cyan("https://www.curatedmcp.com/tokenshield/upgrade")} ${dim("# subscribe ($19/mo)")}\n  2. Copy your token from the post-checkout connect page\n  3. ${c.cyan("tokenshield login --token <paste>")}\n`,
+  )
+  .action((raw: Record<string, unknown>) =>
+    runCommand(() => runLogin({ ...(raw["token"] ? { token: String(raw["token"]) } : {}) })),
+  );
+
+program
+  .command("logout")
+  .description("Remove the stored license token from this machine")
+  .action(() => runCommand(runLogout));
+
+program
+  .command("whoami")
+  .description("Show the license linked to this machine + current tier")
+  .action(() => runCommand(runWhoami));
 
 // ── telemetry ─────────────────────────────────────────────────────────────────
 const telemetryCmd = program

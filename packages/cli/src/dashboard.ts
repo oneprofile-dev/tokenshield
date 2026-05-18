@@ -1,5 +1,18 @@
-export function dashboardHtml(opts: { proxyPort: number; bind: string; version: string }): string {
+export function dashboardHtml(opts: {
+  proxyPort: number;
+  bind: string;
+  version: string;
+  tier?: "free" | "pro" | "team";
+  email?: string;
+}): string {
   const proxyBase = `http://${opts.bind}:${opts.proxyPort}`;
+  const tier = opts.tier ?? "free";
+  const isPro = tier === "pro" || tier === "team";
+  const modePillLabel = isPro ? `${tier.toUpperCase()} · active` : "Estimate mode";
+  const modePillClass = isPro ? "mode-pill mode-pill-pro" : "mode-pill";
+  const modePillTitle = isPro
+    ? `Licensed as ${opts.email ?? "your account"}. Active processors will engage as they ship.`
+    : "Estimate mode measures your spend. Upgrade to Pro to unlock active compression processors as they ship.";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -41,6 +54,7 @@ header { display: flex; align-items: center; justify-content: space-between; mar
 .brand-by a:hover { text-decoration: underline; }
 .brand-ver { font-size: 12px; color: var(--muted); font-weight: 400; }
 .mode-pill { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 999px; background: var(--info-bg); border: 1px solid var(--info-border); color: var(--info); font-weight: 600; cursor: help; }
+.mode-pill-pro { background: rgba(109,211,168,0.12); border-color: rgba(109,211,168,0.45); color: var(--accent); }
 .status { display: flex; align-items: center; gap: 14px; }
 .status-pill { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: var(--accent); flex-shrink: 0; }
@@ -117,7 +131,7 @@ a:hover { text-decoration: underline; }
       <a class="brand-name" href="https://www.curatedmcp.com/tokenshield" target="_blank" rel="noopener">TokenShield</a>
       <span class="brand-ver">v${opts.version}</span>
       <span class="brand-by">by <a href="https://www.curatedmcp.com" target="_blank" rel="noopener">CuratedMCP</a></span>
-      <span class="mode-pill" title="Estimate mode measures your spend. Active compression processors (dedup, cache, diff) ship in upcoming releases — track at curatedmcp.com/tokenshield.">Estimate mode</span>
+      <span class="${modePillClass}" title="${modePillTitle}">${modePillLabel}</span>
     </div>
     <div class="status">
       <div class="status-pill">
@@ -200,7 +214,7 @@ a:hover { text-decoration: underline; }
       <span class="sep">·</span>
       <a href="https://www.curatedmcp.com/docs/tokenshield" target="_blank" rel="noopener">Docs</a>
       <span class="sep">·</span>
-      <a href="https://www.curatedmcp.com/pricing" target="_blank" rel="noopener" class="upgrade-link">Upgrade →</a>
+      <a href="https://www.curatedmcp.com/tokenshield/upgrade" target="_blank" rel="noopener" class="upgrade-link">Upgrade →</a>
     </div>
   </div>
 

@@ -5,6 +5,7 @@ import { VERSION } from "../version.js";
 import { c, sym, box, link, say, emit, dim } from "../lib/ui.js";
 import { firstRunBanner, isFirstRun, markFirstRunComplete, telemetry } from "@curatedmcp/tokenshield-core";
 import { TokenShieldError } from "../lib/errors.js";
+import { refreshLicense } from "../lib/license.js";
 import { requirePortFree, classifyApiKey } from "../lib/preflight.js";
 import { readDaemon, spawnDaemon } from "../lib/daemon.js";
 import { logFile } from "../lib/paths.js";
@@ -109,13 +110,26 @@ export async function runUp(options: UpOptions): Promise<void> {
     return;
   }
 
+  // Refresh license before binding ports — best-effort, won't fail boot
+  const license = await refreshLicense();
+  const tier = license?.tier === "pro" || license?.tier === "team" ? license.tier : "free";
+
   // Foreground mode
   const handle = await start({
     config,
-    renderDashboard: () => dashboardHtml({ proxyPort: config.port, bind: config.bind, version: VERSION }),
+    renderDashboard: () => dashboardHtml({
+      proxyPort: config.port,
+      bind: config.bind,
+      version: VERSION,
+      tier,
+      email: license?.email,
+    }),
   });
 
   emit(banner(config, { daemon: false }));
+  if (license) {
+    say(`${sym.check} Licensed as ${c.bold(license.email ?? "unknown")} · tier: ${c.brightGreen(tier.toUpperCase())}`);
+  }
   maybeWarnAboutLocalKey();
 
   if (isFirstRun()) {
@@ -168,9 +182,18 @@ export async function runSupervised(options: UpOptions): Promise<void> {
     ...(options.ledger ? { ledgerPath: options.ledger } : {}),
     retentionDays: options.retentionDays,
   });
+  // Refresh license in daemon too (best-effort)
+  const supLicense = await refreshLicense();
+  const supTier = supLicense?.tier === "pro" || supLicense?.tier === "team" ? supLicense.tier : "free";
   const handle = await start({
     config,
-    renderDashboard: () => dashboardHtml({ proxyPort: config.port, bind: config.bind, version: VERSION }),
+    renderDashboard: () => dashboardHtml({
+      proxyPort: config.port,
+      bind: config.bind,
+      version: VERSION,
+      tier: supTier,
+      email: supLicense?.email,
+    }),
   });
   const shutdown = async (signal: string): Promise<void> => {
     process.stderr.write(`[tokenshield] caught ${signal}, shutting down\n`);
