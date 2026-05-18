@@ -1,8 +1,38 @@
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { defaultConfig } from "@curatedmcp/tokenshield-core";
 import { classifyApiKey, probeUpstream, checkPort } from "../lib/preflight.js";
 import { readDaemon } from "../lib/daemon.js";
 import { c, sym, dim, emit, emitJson, isJson, say, heading } from "../lib/ui.js";
+
+/**
+ * Detect Claude Code OAuth credentials from a prior `claude login`.
+ * If present, Claude Code prefers OAuth Bearer tokens over ANTHROPIC_API_KEY,
+ * which routes broken auth through the proxy and produces 401s upstream.
+ */
+function detectClaudeOAuth(): { found: boolean; path?: string } {
+  const home = process.env["HOME"] ?? homedir();
+  const candidates = [
+    join(home, ".claude", ".credentials.json"),
+    join(home, ".claude", "credentials.json"),
+    join(home, ".config", "claude", "credentials.json"),
+  ];
+  for (const p of candidates) {
+    if (!existsSync(p)) continue;
+    try {
+      const raw = readFileSync(p, "utf8");
+      // Look for OAuth-shaped fields without parsing PII
+      if (/access[_-]?token|oauth|refresh[_-]?token|bearer/i.test(raw)) {
+        return { found: true, path: p };
+      }
+    } catch {
+      // Unreadable file (permissions) — be conservative, flag it as possibly present
+      return { found: true, path: p };
+    }
+  }
+  return { found: false };
+}
 
 interface Check {
   name: string;
@@ -55,6 +85,32 @@ export async function runDoctor(): Promise<void> {
       detail: "not set in this shell",
       hint: `export ANTHROPIC_BASE_URL=http://${cfg.bind}:${cfg.port}`,
     });
+  }
+
+  // Claude Code OAuth credentials — the #1 silent killer for Pro/Max users.
+  // If `claude login` ran previously, Claude Code prefers OAuth over the env-var
+  // API key. The proxy then forwards an OAuth Bearer token, Anthropic returns 401.
+  const oauth = detectClaudeOAuth();
+  if (oauth.found) {
+    const apiKeyOk = ks.state === "ok";
+    if (apiKeyOk) {
+      // Worst case — both set, OAuth wins, user thinks it's working
+      checks.push({
+        name: "Claude Code auth",
+        status: "warn",
+        detail: "OAuth + API key both present — Claude Code will use OAuth, causing 401s through the proxy",
+        hint: `claude logout   # then restart claude in a shell with ANTHROPIC_API_KEY set`,
+      });
+    } else {
+      checks.push({
+        name: "Claude Code auth",
+        status: "warn",
+        detail: `OAuth credentials found at ${oauth.path}`,
+        hint: "TokenShield can't route OAuth Bearer tokens — run `claude logout` and use ANTHROPIC_API_KEY instead",
+      });
+    }
+  } else {
+    checks.push({ name: "Claude Code auth", status: "ok", detail: "no OAuth credentials cached (API-key path clear)" });
   }
 
   // Daemon

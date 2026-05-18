@@ -242,11 +242,14 @@ function renderDiagnostic(rec) {
   } else if (failed.length >= apiCalls.length * 0.5 && failed.length > 0) {
     cls = 'bad';
     const pct = Math.round((failed.length / apiCalls.length) * 100);
-    html = '<div class="diag-title"><span class="icon">!</span>' + pct + '% of API calls failing with 401/403 — your API key isn\\'t reaching Anthropic</div>' +
-      'The proxy is forwarding requests fine, but Anthropic is rejecting them. In the <strong>shell that runs Claude Code</strong> (not this one), check:<br>' +
-      '<code>echo $ANTHROPIC_API_KEY</code> — should start with <code>sk-ant-</code><br>' +
-      '<code>echo $ANTHROPIC_BASE_URL</code> — should be <code>${proxyBase}</code><br>' +
-      'Then restart Claude Code in that shell.';
+    html = '<div class="diag-title"><span class="icon">!</span>' + pct + '% of API calls failing with 401/403 — auth not reaching Anthropic</div>' +
+      '<strong>#1 cause (Pro/Max users):</strong> Claude Code is using a cached OAuth token from a prior <code>claude login</code>, which overrides <code>ANTHROPIC_API_KEY</code> and breaks through the proxy. Fix:<br>' +
+      '&nbsp;&nbsp;1. <code>claude logout</code><br>' +
+      '&nbsp;&nbsp;2. In that same shell: <code>export ANTHROPIC_API_KEY=sk-ant-api03-…</code> &nbsp; <code>export ANTHROPIC_BASE_URL=${proxyBase}</code><br>' +
+      '&nbsp;&nbsp;3. <code>echo $ANTHROPIC_API_KEY</code> — must print your full key (not empty)<br>' +
+      '&nbsp;&nbsp;4. <code>claude</code> in that same shell<br>' +
+      '<br><strong>#2 cause:</strong> Env vars set inside a script (<code>./up.sh</code>) won\\'t leak to your <code>claude</code> shell. Either <code>source up.sh</code> or paste the exports directly into the shell where you run <code>claude</code>.<br>' +
+      '<br>Run <code>tokenshield doctor</code> to auto-diagnose.';
   } else if (fiveXx.length >= apiCalls.length * 0.3 && fiveXx.length > 0) {
     cls = 'warn';
     html = '<div class="diag-title"><span class="icon">!</span>Upstream errors from Anthropic</div>' +
