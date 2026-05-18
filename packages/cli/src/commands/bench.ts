@@ -242,6 +242,7 @@ export async function runBench(opts: BenchOptions): Promise<void> {
   );
   emit("");
   emit(dim("  Note: these are SINGLE-PROCESSOR numbers (conversation-dedup only)."));
-  emit(dim("  v0.3 adds diff-based file reads + streaming early-stop; v1.0 adds context auto-summarize."));
+  emit(dim("  Upcoming processors: response-cache · diff-file-reads · stream-early-stop · context-summarizer."));
+  emit(dim("  Activated automatically as they ship for Pro subscribers: curatedmcp.com/tokenshield/upgrade"));
   emit("");
 }
