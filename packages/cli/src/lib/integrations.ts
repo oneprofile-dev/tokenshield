@@ -10,6 +10,7 @@ import { execSync } from "node:child_process";
 
 export type IntegrationId =
   | "claude-code"
+  | "codex"
   | "cursor"
   | "windsurf"
   | "zed"
@@ -63,11 +64,31 @@ function appSupport(): string | null {
 export function detectAll(): Integration[] {
   return [
     detectClaudeCode(),
+    detectCodex(),
     detectCursor(),
     detectWindsurf(),
     detectZed(),
     detectAider(),
   ];
+}
+
+export function detectCodex(): Integration {
+  const onPath = commandExists("codex");
+  const dotDir = exists(join(homedir(), ".codex"));
+  const status: IntegrationStatus = onPath || dotDir ? "detected" : "not-found";
+  return {
+    id: "codex",
+    name: "Codex",
+    status,
+    detail: onPath
+      ? "codex found on PATH"
+      : dotDir
+      ? `config dir at ${join(homedir(), ".codex")}`
+      : "not found (install Codex, then run `codex login`)",
+    configureMethod: "manual-snippet",
+    instructions:
+      "Edit ~/.codex/config.toml and set openai_base_url to route OpenAI API traffic through TokenShield.",
+  };
 }
 
 export function detectClaudeCode(): Integration {
@@ -263,6 +284,8 @@ export function manualSnippet(id: IntegrationId, baseUrl: string): string {
   switch (id) {
     case "cursor":
       return `Anthropic API Base URL: ${baseUrl}\n(Settings → Models → expand Anthropic provider → Override base URL)`;
+    case "codex":
+      return `Edit ~/.codex/config.toml:\nopenai_base_url = "${baseUrl}"\n\nThen authenticate Codex normally, or use:\nprintenv OPENAI_API_KEY | codex login --with-api-key`;
     case "windsurf":
       return `Anthropic endpoint: ${baseUrl}\n(Settings → Models → Anthropic → Custom endpoint)`;
     case "zed":

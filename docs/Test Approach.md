@@ -251,13 +251,14 @@ which tokenshield
 | T-12 | Daemon mode | Integration test |
 | T-13 | Claude Code golden path | **Manual only** |
 | T-14 | Uninstall clean | Manual |
+| T-15 | OpenAI/Codex API passthrough | Integration test |
 
-T-6 is the only fully automated gate in CI (64 unit tests + 4 bench assertions). T-13 requires a real Claude Code session and human judgment on latency feel.
+T-6 is the benchmark gate in CI. T-13 requires a real Claude Code session and human judgment on latency feel.
 
 ---
 
 ## Known issues / not tested
 
 - **Windows / PowerShell**: shell-rc integration writes bash syntax; needs a separate `tokenshield integrations enable --shell powershell` path (v0.3 backlog)
-- **OpenAI / Gemini endpoints**: return `501 Not Implemented` by design — v1.1/v1.2
+- **Gemini endpoints**: not implemented yet
 - **Rate-limit handling**: proxy passes 429s through transparently; no retry logic yet

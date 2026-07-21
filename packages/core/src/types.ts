@@ -7,6 +7,8 @@ export type ModelId =
   | "claude-haiku-4-5-20251001"
   | string;
 
+export type ProviderId = "anthropic" | "openai" | "gemini";
+
 export interface UsageCounts {
   inputTokens: number;
   outputTokens: number;
@@ -17,6 +19,7 @@ export interface UsageCounts {
 export interface RequestRecord {
   id: string;
   timestamp: number;
+  provider: ProviderId | "unknown";
   model: ModelId;
   endpoint: string;
   streamed: boolean;
@@ -33,6 +36,7 @@ export interface RequestRecord {
 
 export interface ProxyConfig {
   upstreamBaseUrl: string;
+  openaiUpstreamBaseUrl: string;
   port: number;
   bind: string;
   dashboardPort: number;

@@ -56,6 +56,7 @@ export interface SpawnOptions {
   dashboardPort: number;
   bind: string;
   upstream: string;
+  openaiUpstream: string;
   ledger: string;
   retentionDays: number;
 }
@@ -90,6 +91,7 @@ export async function spawnDaemon(opts: SpawnOptions): Promise<DaemonInfo> {
     "--dashboard-port", String(opts.dashboardPort),
     "--bind", opts.bind,
     "--upstream", opts.upstream,
+    "--openai-upstream", opts.openaiUpstream,
     "--ledger", opts.ledger,
     "--retention-days", String(opts.retentionDays),
   ];

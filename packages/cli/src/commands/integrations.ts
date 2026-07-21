@@ -9,7 +9,7 @@ import {
 import { c, sym, dim, emit, emitJson, isJson, table, heading, box } from "../lib/ui.js";
 import { TokenShieldError } from "../lib/errors.js";
 
-const KNOWN_IDS: IntegrationId[] = ["claude-code", "cursor", "windsurf", "zed", "aider"];
+const KNOWN_IDS: IntegrationId[] = ["claude-code", "codex", "cursor", "windsurf", "zed", "aider"];
 
 function statusLabel(s: Integration["status"]): string {
   if (s === "detected") return c.green("detected");

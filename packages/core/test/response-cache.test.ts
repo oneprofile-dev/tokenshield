@@ -79,6 +79,15 @@ test("cache: different messages → cache miss", () => {
   assert.equal(hit, null);
 });
 
+test("cache: namespaces keys by provider", () => {
+  const cache = new ResponseCache();
+  const body = bodyWith({});
+  cache.store(body, { ...fakeRes(), providerId: "anthropic" });
+
+  assert.equal(cache.lookup(body, "openai"), null);
+  assert.ok(cache.lookup(body, "anthropic"));
+});
+
 test("cache: stats() reports hits and misses", () => {
   const cache = new ResponseCache();
   const body = bodyWith({});

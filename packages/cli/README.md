@@ -1,6 +1,6 @@
 # TokenShield
 
-**Cut your Claude Code bill 40–70%.** Local proxy. Your API key never leaves your machine.
+**Cut Claude Code and Codex/OpenAI token spend.** Local proxy. Your API keys never leave your machine.
 
 [![npm version](https://img.shields.io/npm/v/@curatedmcp/tokenshield.svg)](https://www.npmjs.com/package/@curatedmcp/tokenshield)
 [![license](https://img.shields.io/npm/l/@curatedmcp/tokenshield.svg)](https://github.com/oneprofile-dev/tokenshield/blob/main/LICENSE)
@@ -12,7 +12,7 @@ npm install -g @curatedmcp/tokenshield
 tokenshield setup
 ```
 
-That's it. Your existing `ANTHROPIC_API_KEY`, your existing Claude Code workflow — now 40–70% cheaper.
+That's it. Your existing API keys and agentic workflow — now with local measurement and token-saving processors.
 
 ---
 
@@ -20,7 +20,7 @@ That's it. Your existing `ANTHROPIC_API_KEY`, your existing Claude Code workflow
 
 Claude Code is great. Claude Code is also expensive. A 25-turn agentic session that re-reads the same `auth.ts` five times and re-runs `gh pr list` three times burns ~$1.60 in tokens — even though 60% of the bytes flowing to Anthropic are exact duplicates.
 
-TokenShield sits between your AI tool (Claude Code, Cursor, Windsurf, Aider, anything that speaks the Anthropic SDK) and `api.anthropic.com`. It deduplicates repeated tool results inside the conversation and caches deterministic responses. **Everything runs on your machine.** Your prompts never touch our servers.
+TokenShield sits between your AI tool (Claude Code, Codex, Cursor, Windsurf, Aider, and compatible SDK clients) and the matching upstream API. It deduplicates repeated tool results inside the conversation and caches deterministic responses. **Everything runs on your machine.** Your prompts never touch our servers.
 
 ---
 
@@ -55,6 +55,13 @@ export ANTHROPIC_BASE_URL=http://127.0.0.1:7777
 claude        # your normal workflow — savings tick up in the dashboard
 ```
 
+For Codex/OpenAI, set the user-level Codex base URL:
+
+```toml
+# ~/.codex/config.toml
+openai_base_url = "http://127.0.0.1:7777"
+```
+
 Or let TokenShield write that `export` line into your `~/.zshrc` for you:
 
 ```bash
@@ -63,17 +70,18 @@ tokenshield integrations enable claude-code
 
 ---
 
-## Works with everything that speaks Anthropic
+## Works with Anthropic and OpenAI-compatible traffic
 
 | Tool | Status |
 |------|--------|
 | Claude Code | ✅ live |
+| Codex / OpenAI Responses API | ✅ live |
+| OpenAI Chat Completions API | ✅ live |
 | Cursor (Anthropic mode) | ✅ live |
 | Windsurf (Anthropic mode) | ✅ live |
 | Zed (Anthropic mode) | ✅ live |
 | Aider (Anthropic mode) | ✅ live |
 | Continue.dev, Cline, Roo, anything using `@anthropic-ai/sdk` | ✅ live |
-| OpenAI endpoints | 🕒 v1.1 — [join the waitlist](https://curatedmcp.com/tokenshield#waitlist) |
 | Google Gemini | 🕒 v1.2 — [join the waitlist](https://curatedmcp.com/tokenshield#waitlist) |
 
 ---
@@ -89,10 +97,10 @@ tokenshield integrations enable claude-code
 Full architecture in 60 seconds:
 
 ```
-   Claude Code  ─▶  TokenShield proxy  ─▶  api.anthropic.com
-   (or Cursor,      127.0.0.1:7777
-    Windsurf,       (your machine)
-    Aider, …)             │
+   Claude Code ─┐
+   Codex      ──┼▶  TokenShield proxy  ─▶  api.anthropic.com / api.openai.com
+   Cursor     ──┘       127.0.0.1:7777
+                         (your machine)    │
                           ▼
                   ~/.tokenshield/ledger.db
                   http://127.0.0.1:7778
@@ -113,7 +121,7 @@ tokenshield bench              replay built-in fixtures and report savings
 tokenshield demo               canned 8-turn savings replay (no network)
 tokenshield doctor             health check (Node, key, network, ports)
 tokenshield stop               stop the background daemon
-tokenshield integrations list  detect Claude Code / Cursor / Windsurf / Zed / Aider
+tokenshield integrations list  detect Claude Code / Codex / Cursor / Windsurf / Zed / Aider
 tokenshield integrations enable claude-code   # write managed block to shell rc
 tokenshield telemetry status   # show telemetry state + anonId
 tokenshield telemetry off      # opt out of anonymous usage stats
@@ -126,8 +134,8 @@ Every command supports `--json`, `--quiet`, and `--debug`. Exit codes are catego
 
 ## Privacy — what actually leaves your machine
 
-- **Your `ANTHROPIC_API_KEY`** stays in process memory. Never written to disk. Never sent to CuratedMCP.
-- **Your prompts** stay between your machine and Anthropic. The proxy is transparent.
+- **Your provider API keys** stay with your local AI client and upstream provider. Never written by TokenShield. Never sent to CuratedMCP.
+- **Your prompts** stay between your machine and the upstream provider. The proxy is transparent.
 - **Optional cloud telemetry** (off by default) is aggregate-only: token counts and dollar savings. Schema-validated locally to reject any field whose name suggests content (`prompt`, `message`, `content`, `text`, `body`).
 - **Default localhost binding** (`127.0.0.1`). Opt-in `--bind 0.0.0.0` for team deployments behind a VPN.
 
@@ -180,11 +188,10 @@ If you're an engineering leader trying to answer "what MCP servers are running a
 
 ## Status
 
-- **v0.2.x (today)**: conversation-dedup + response-cache + production-grade CLI. 64/64 tests green. Anthropic provider live.
-- **v0.3** (week of 2026-05-24): diff-based file reads + streaming early-stop. Heavy workloads → 70%+ savings.
-- **v1.0** (week of 2026-05-31): context auto-summarize + Stripe checkout + GA.
-- **v1.1** (week of 2026-06-07): OpenAI provider live.
-- **v1.2** (week of 2026-06-14): Google Gemini provider live.
+- **today**: conversation-dedup + response-cache + production-grade CLI. Anthropic and OpenAI/Codex providers live.
+- **planned**: diff-based file reads + streaming early-stop. Heavy workloads → 70%+ savings.
+- **planned**: context auto-summarize + Stripe checkout + GA.
+- **planned**: Google Gemini provider live.
 
 ---
 

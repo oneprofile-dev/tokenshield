@@ -120,8 +120,20 @@ test("removeShellRc returns removed:false when no block present", async () => {
 test("manualSnippet returns shell-tool-specific text", async () => {
   const { manualSnippet } = await import("../../src/lib/integrations.js");
   assert.match(manualSnippet("cursor", "http://127.0.0.1:7777"), /Anthropic API Base URL/);
+  assert.match(manualSnippet("codex", "http://127.0.0.1:7777"), /openai_base_url/);
   assert.match(manualSnippet("windsurf", "http://127.0.0.1:7777"), /Custom endpoint/);
   assert.match(manualSnippet("zed", "http://127.0.0.1:7777"), /assistant/);
+});
+
+test("detectCodex finds ~/.codex config dir", async () => {
+  await withTempHome("/bin/zsh", async (home) => {
+    mkdirSync(join(home, ".codex"));
+    const { detectCodex } = await import("../../src/lib/integrations.js");
+    const result = detectCodex();
+    assert.equal(result.id, "codex");
+    assert.equal(result.status, "detected");
+    assert.match(result.instructions, /openai_base_url/);
+  });
 });
 
 // Suppress unused warnings for helpers test infra needs

@@ -23,6 +23,7 @@ export function defaultConfig(overrides: Partial<ProxyConfig> = {}): ProxyConfig
   const home = process.env["HOME"] ?? process.env["USERPROFILE"] ?? ".";
   return {
     upstreamBaseUrl: overrides.upstreamBaseUrl ?? "https://api.anthropic.com",
+    openaiUpstreamBaseUrl: overrides.openaiUpstreamBaseUrl ?? "https://api.openai.com",
     port: overrides.port ?? 7777,
     bind: overrides.bind ?? "127.0.0.1",
     dashboardPort: overrides.dashboardPort ?? 7778,
@@ -73,7 +74,7 @@ export async function start(opts: StartOptions): Promise<ProxyServerHandle> {
         outputTokens: r.usageRaw.outputTokens,
         dollarsEstimate: r.dollarsRaw,
         dollarsSaved: r.dollarsSaved,
-        provider: "anthropic",
+        provider: r.provider === "unknown" ? null : r.provider,
         model: r.model,
         client: null,
         teamDeployment: isTeamDeployment,
@@ -191,6 +192,7 @@ function defaultDashboardHtml(): string {
 function proxyLandingHtml(config: ProxyConfig): string {
   const dashUrl = `http://${config.bind === "0.0.0.0" ? "127.0.0.1" : config.bind}:${config.dashboardPort}`;
   const exportLine = `export ANTHROPIC_BASE_URL=http://${config.bind === "0.0.0.0" ? "127.0.0.1" : config.bind}:${config.port}`;
+  const codexSnippet = `# ~/.codex/config.toml\nopenai_base_url = "http://${config.bind === "0.0.0.0" ? "127.0.0.1" : config.bind}:${config.port}"`;
   return `<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">
@@ -219,7 +221,7 @@ function proxyLandingHtml(config: ProxyConfig): string {
 </head><body><main>
   <span class="pill">TokenShield is running</span>
   <h1>This is the proxy, not the dashboard.</h1>
-  <p class="subtitle">You hit port ${config.port} — that's where Claude Code (or Cursor, Windsurf, Aider) sends its API requests. The proxy doesn't serve a UI; it forwards traffic to Anthropic.</p>
+  <p class="subtitle">You hit port ${config.port} — that's where Claude Code, Codex, Cursor, Windsurf, or Aider can send API requests. The proxy doesn't serve a UI; it forwards traffic to the matching upstream provider.</p>
 
   <div class="card">
     <h2>→ Want the dashboard?</h2>
@@ -232,6 +234,13 @@ function proxyLandingHtml(config: ProxyConfig): string {
     <p style="margin:0 0 4px">In the shell where you run <code>claude</code>:</p>
     <pre><code>${exportLine}</code></pre>
     <p style="margin:12px 0 0;font-size:13px;color:#9ca3af">Your <code>ANTHROPIC_API_KEY</code> stays where it is. TokenShield never reads it.</p>
+  </div>
+
+  <div class="card">
+    <h2>→ Route Codex/OpenAI through this proxy</h2>
+    <p style="margin:0 0 4px">In your user-level Codex config:</p>
+    <pre><code>${codexSnippet}</code></pre>
+    <p style="margin:12px 0 0;font-size:13px;color:#9ca3af">Codex auth stays in Codex. TokenShield only receives proxied API traffic.</p>
   </div>
 
   <div class="card">

@@ -16,6 +16,7 @@ export interface UpOptions {
   dashboardPort: number;
   bind: string;
   upstream: string;
+  openaiUpstream: string;
   ledger?: string;
   retentionDays: number;
   daemon: boolean;
@@ -31,6 +32,7 @@ function banner(config: ProxyConfig, opts: { daemon: boolean; logPath?: string }
   lines.push(`${sym.dot} Proxy      ${link(proxyUrl, proxyUrl)}`);
   lines.push(`${sym.dot} Dashboard  ${link(dashUrl, dashUrl)}`);
   lines.push(`${sym.dot} Upstream   ${dim(config.upstreamBaseUrl)}`);
+  lines.push(`${sym.dot} OpenAI     ${dim(config.openaiUpstreamBaseUrl)}`);
   lines.push(`${sym.dot} Ledger     ${dim(config.ledgerPath)}`);
   if (opts.logPath) {
     lines.push(`${sym.dot} Log        ${dim(opts.logPath)}`);
@@ -39,7 +41,10 @@ function banner(config: ProxyConfig, opts: { daemon: boolean; logPath?: string }
   lines.push(c.bold("Point Claude Code at the proxy:"));
   lines.push(`  ${c.cyan("export ANTHROPIC_BASE_URL=" + proxyUrl)}`);
   lines.push("");
-  lines.push(dim("Your ANTHROPIC_API_KEY never leaves this machine."));
+  lines.push(c.bold("Point Codex/OpenAI at the proxy:"));
+  lines.push(`  ${c.cyan(`openai_base_url = "${proxyUrl}"`)} ${dim("in ~/.codex/config.toml")}`);
+  lines.push("");
+  lines.push(dim("Your API keys never leave this machine."));
   if (!opts.daemon) {
     lines.push(dim("Press Ctrl-C to stop."));
   } else {
@@ -69,6 +74,7 @@ export async function runUp(options: UpOptions): Promise<void> {
     dashboardPort: options.dashboardPort,
     bind: options.bind,
     upstreamBaseUrl: options.upstream,
+    openaiUpstreamBaseUrl: options.openaiUpstream,
     ...(options.ledger ? { ledgerPath: options.ledger } : {}),
     retentionDays: options.retentionDays,
   });
@@ -101,6 +107,7 @@ export async function runUp(options: UpOptions): Promise<void> {
       dashboardPort: config.dashboardPort,
       bind: config.bind,
       upstream: config.upstreamBaseUrl,
+      openaiUpstream: config.openaiUpstreamBaseUrl,
       ledger: config.ledgerPath,
       retentionDays: config.retentionDays,
     });
@@ -179,6 +186,7 @@ export async function runSupervised(options: UpOptions): Promise<void> {
     dashboardPort: options.dashboardPort,
     bind: options.bind,
     upstreamBaseUrl: options.upstream,
+    openaiUpstreamBaseUrl: options.openaiUpstream,
     ...(options.ledger ? { ledgerPath: options.ledger } : {}),
     retentionDays: options.retentionDays,
   });

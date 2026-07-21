@@ -1,5 +1,5 @@
 import type { Conversation } from "../providers/types.js";
-import type { ProviderId } from "../providers/types.js";
+import type { ProviderId } from "../types.js";
 
 export interface ProcessorContext {
   providerId: ProviderId;

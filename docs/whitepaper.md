@@ -292,8 +292,8 @@ If we miss the guaranteed floor, we refund the difference up to one month's subs
 | **Zed** (Anthropic mode) | ✅ Live | `settings.json` → `assistant.anthropic_api_url` |
 | **Aider** (Anthropic mode) | ✅ Live | Same `ANTHROPIC_BASE_URL` env var |
 | Anthropic SDK apps (any language) | ✅ Live | The SDK respects the env var |
-| **OpenAI** (Codex CLI, Cursor GPT, Continue) | 🕒 v1.1 — week of 2026-06-07 | Same shape, different adapter |
-| **Google Gemini** | 🕒 v1.2 — week of 2026-06-14 | Harder (Google auth quirks) — same adapter pattern |
+| **OpenAI** (Codex CLI, Cursor GPT, Continue) | ✅ Live | `openai_base_url = "http://127.0.0.1:7777"` in `~/.codex/config.toml` or equivalent base URL setting |
+| **Google Gemini** | 🕒 Planned | Harder (Google auth quirks) — same adapter pattern |
 | **Claude Desktop** (Anthropic GUI) | ❌ No plans | Doesn't expose a base URL setting |
 | **ChatGPT desktop** | ❌ No plans | Session-based auth, no API key flow |
 
@@ -335,8 +335,7 @@ If we miss the guaranteed floor, we refund the difference up to one month's subs
 
 ### 7.5 Fast-follows
 
-- **v1.1** OpenAI provider adapter (week 2026-06-14)
-- **v1.2** Google Gemini provider adapter (week 2026-06-21)
+- **v1.1** Google Gemini provider adapter
 - **v1.5** Tauri menu-bar app (Mac + Windows + Linux) — one-click installer, system-tray savings ticker, GUI wizards that call the same `integrations` library the CLI uses
 - **Orchestra** (sibling product) — explicit hybrid model routing + Anthropic failover, bundled into Team Pro
 - **PrivacyShield** (sibling product) — local PII tokenization, $99–$499/seat self-serve
@@ -353,6 +352,13 @@ tokenshield up                              # foreground
 export ANTHROPIC_BASE_URL=http://127.0.0.1:7777
 claude                                      # your normal workflow
 open http://127.0.0.1:7778                  # live dashboard
+```
+
+For Codex/OpenAI:
+
+```toml
+# ~/.codex/config.toml
+openai_base_url = "http://127.0.0.1:7777"
 ```
 
 For a no-network demo of projected savings:

@@ -11,6 +11,7 @@ export interface SetupOptions {
   dashboardPort: number;
   bind: string;
   upstream: string;
+  openaiUpstream: string;
   retentionDays: number;
   yes: boolean;
 }
@@ -132,6 +133,7 @@ export async function runSetup(opts: SetupOptions): Promise<void> {
             dashboardPort: opts.dashboardPort,
             bind: opts.bind,
             upstream: opts.upstream,
+            openaiUpstream: opts.openaiUpstream,
             ledger: cfg.ledgerPath,
             retentionDays: opts.retentionDays,
           });

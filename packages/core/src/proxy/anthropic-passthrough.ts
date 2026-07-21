@@ -11,6 +11,7 @@ import { Pipeline } from "../processors/pipeline.js";
 import type { Processor } from "../processors/types.js";
 import { conversationDedup } from "../processors/conversation-dedup.js";
 import { ResponseCache } from "../processors/response-cache.js";
+import type { Provider } from "../providers/types.js";
 
 type RecordSink = (record: RequestRecord) => void;
 
@@ -65,8 +66,8 @@ async function readJsonBody(
 function conversationFingerprint(parsed: unknown): string {
   if (!parsed || typeof parsed !== "object") return "_";
   const obj = parsed as Record<string, unknown>;
-  const sys = obj["system"];
-  const messages = Array.isArray(obj["messages"]) ? obj["messages"] : [];
+  const sys = obj["system"] ?? obj["instructions"];
+  const messages = Array.isArray(obj["messages"]) ? obj["messages"] : Array.isArray(obj["input"]) ? obj["input"] : [];
   const firstUser = messages.find(
     (m) => typeof m === "object" && m !== null && (m as Record<string, unknown>)["role"] === "user",
   );
@@ -74,6 +75,17 @@ function conversationFingerprint(parsed: unknown): string {
     .update(JSON.stringify({ sys, firstUser }))
     .digest("hex")
     .slice(0, 16);
+}
+
+function upstreamBaseFor(provider: Provider | null, config: ProxyConfig): string {
+  if (provider?.id === "openai") return config.openaiUpstreamBaseUrl;
+  return config.upstreamBaseUrl;
+}
+
+function providerLabel(provider: Provider | null): string {
+  if (provider?.id === "openai") return "OpenAI";
+  if (provider?.id === "anthropic") return "Anthropic";
+  return "upstream";
 }
 
 function bodySize(json: unknown): number {
@@ -121,8 +133,9 @@ export async function handleAnthropicRequest(
     return;
   }
 
-  const upstream = new URL(req.url ?? "/", config.upstreamBaseUrl);
-  const provider = providerForPath(upstream.pathname);
+  const inbound = new URL(req.url ?? "/", "http://tokenshield.local");
+  const provider = providerForPath(inbound.pathname);
+  const upstream = new URL(req.url ?? "/", upstreamBaseFor(provider, config));
   const isHttps = upstream.protocol === "https:";
   const requester = isHttps ? httpsRequest : httpRequest;
 
@@ -168,7 +181,7 @@ export async function handleAnthropicRequest(
 
   // ── 3. Response cache: short-circuit if we have a fresh hit ─────────────
   if (provider !== null && body.parsed !== null) {
-    const hit = RESPONSE_CACHE.lookup(body.parsed);
+    const hit = RESPONSE_CACHE.lookup(body.parsed, provider.id);
     if (hit !== null) {
       res.statusCode = hit.status;
       for (const [k, v] of Object.entries(hit.headers)) {
@@ -189,6 +202,7 @@ export async function handleAnthropicRequest(
         sink({
           id: requestId,
           timestamp: startedAt,
+          provider: provider.id,
           model: hit.model || model,
           endpoint: upstream.pathname,
           streamed: false,
@@ -256,6 +270,7 @@ export async function handleAnthropicRequest(
     const record: RequestRecord = {
       id: requestId,
       timestamp: startedAt,
+      provider: provider?.id ?? "unknown",
       model: effectiveModel,
       endpoint: upstream.pathname,
       streamed,
@@ -284,6 +299,7 @@ export async function handleAnthropicRequest(
         body: buf,
         usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
         model: effectiveModel,
+        providerId: provider.id,
       });
     }
   };
@@ -384,7 +400,7 @@ export async function handleAnthropicRequest(
             type: "error",
             error: {
               type: "tokenshield_upstream_error",
-              message: `Failed to reach Anthropic: ${err.message}`,
+              message: `Failed to reach ${providerLabel(provider)}: ${err.message}`,
             },
           }),
         );

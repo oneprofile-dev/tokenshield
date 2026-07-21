@@ -38,6 +38,7 @@ interface SummaryRow {
 interface RequestRow {
   id: string;
   timestamp: number;
+  provider: string;
   model: string;
   endpoint: string;
   streamed: number;
@@ -72,6 +73,7 @@ export class Ledger {
       CREATE TABLE IF NOT EXISTS requests (
         id TEXT PRIMARY KEY,
         timestamp INTEGER NOT NULL,
+        provider TEXT NOT NULL DEFAULT 'anthropic',
         model TEXT NOT NULL,
         endpoint TEXT NOT NULL,
         streamed INTEGER NOT NULL,
@@ -90,18 +92,20 @@ export class Ledger {
         processors TEXT NOT NULL
       );
     `);
+    this.migrate();
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_requests_ts ON requests(timestamp)");
+    this.db.exec("CREATE INDEX IF NOT EXISTS idx_requests_provider ON requests(provider)");
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_requests_model ON requests(model)");
 
     this.insertStmt = this.db.prepare(`
       INSERT INTO requests (
-        id, timestamp, model, endpoint, streamed, duration_ms,
+        id, timestamp, provider, model, endpoint, streamed, duration_ms,
         upstream_status, upstream_error,
         input_tokens_raw, input_tokens_sent,
         output_tokens_raw, output_tokens_sent,
         cache_create_raw, cache_read_raw,
         dollars_raw, dollars_sent, dollars_saved, processors
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     this.summaryStmt = this.db.prepare(`
       SELECT model,
@@ -124,10 +128,18 @@ export class Ledger {
     this.pruneStmt = this.db.prepare(`DELETE FROM requests WHERE timestamp < ?`);
   }
 
+  private migrate(): void {
+    const cols = this.db.prepare("PRAGMA table_info(requests)").all() as Array<{ name: string }>;
+    if (!cols.some((c) => c.name === "provider")) {
+      this.db.exec("ALTER TABLE requests ADD COLUMN provider TEXT NOT NULL DEFAULT 'anthropic'");
+    }
+  }
+
   record(r: RequestRecord): void {
     this.insertStmt.run(
       r.id,
       r.timestamp,
+      r.provider,
       r.model,
       r.endpoint,
       r.streamed ? 1 : 0,
@@ -196,6 +208,7 @@ export class Ledger {
     return rows.map((r) => ({
       id: r.id,
       timestamp: r.timestamp,
+      provider: (r.provider ?? "anthropic") as RequestRecord["provider"],
       model: r.model,
       endpoint: r.endpoint,
       streamed: r.streamed === 1,

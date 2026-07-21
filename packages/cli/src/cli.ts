@@ -30,8 +30,8 @@ const program = new Command();
 program
   .name("tokenshield")
   .description(
-    "Local API-layer proxy that cuts your Claude Code bill 40–70%.\n" +
-      "Your ANTHROPIC_API_KEY stays on your machine. No signup to start measuring.",
+    "Local API-layer proxy that cuts Claude Code and Codex/OpenAI token spend.\n" +
+      "Your API keys stay on your machine. No signup to start measuring.",
   )
   .version(VERSION, "-v, --version", "show version")
   .helpOption("-h, --help", "show help")
@@ -79,6 +79,7 @@ program
   .option("--dashboard-port <port>", "dashboard port", "7778")
   .option("--bind <host>", "bind address (default 127.0.0.1)", "127.0.0.1")
   .option("--upstream <url>", "upstream Anthropic base URL", "https://api.anthropic.com")
+  .option("--openai-upstream <url>", "upstream OpenAI base URL", "https://api.openai.com")
   .option("--ledger <path>", "SQLite ledger path")
   .option("--retention-days <n>", "ledger retention in days", "7")
   .option("--daemon, -d", "run in background", false)
@@ -100,6 +101,7 @@ program
         dashboardPort: ensureNumber("dashboard-port", raw["dashboardPort"]),
         bind: String(raw["bind"]),
         upstream: String(raw["upstream"]),
+        openaiUpstream: String(raw["openaiUpstream"]),
         ledger: raw["ledger"] ? String(raw["ledger"]) : undefined,
         retentionDays: ensureNumber("retention-days", raw["retentionDays"], 1, 365),
         daemon: raw["daemon"] === true,
@@ -115,6 +117,7 @@ program
   .option("--dashboard-port <port>", "dashboard port", "7778")
   .option("--bind <host>", "bind address", "127.0.0.1")
   .option("--upstream <url>", "upstream Anthropic base URL", "https://api.anthropic.com")
+  .option("--openai-upstream <url>", "upstream OpenAI base URL", "https://api.openai.com")
   .option("--ledger <path>", "SQLite ledger path")
   .option("--retention-days <n>", "ledger retention", "7")
   .action((raw: Record<string, unknown>) =>
@@ -124,6 +127,7 @@ program
         dashboardPort: ensureNumber("dashboard-port", raw["dashboardPort"]),
         bind: String(raw["bind"]),
         upstream: String(raw["upstream"]),
+        openaiUpstream: String(raw["openaiUpstream"]),
         ledger: raw["ledger"] ? String(raw["ledger"]) : undefined,
         retentionDays: ensureNumber("retention-days", raw["retentionDays"], 1, 365),
         daemon: false,
@@ -139,6 +143,7 @@ program
   .option("--dashboard-port <port>", "dashboard port", "7778")
   .option("--bind <host>", "bind address", "127.0.0.1")
   .option("--upstream <url>", "upstream Anthropic base URL", "https://api.anthropic.com")
+  .option("--openai-upstream <url>", "upstream OpenAI base URL", "https://api.openai.com")
   .option("--retention-days <n>", "ledger retention", "7")
   .option("--yes, -y", "accept all defaults non-interactively", false)
   .action((raw: Record<string, unknown>) =>
@@ -148,6 +153,7 @@ program
         dashboardPort: ensureNumber("dashboard-port", raw["dashboardPort"]),
         bind: String(raw["bind"]),
         upstream: String(raw["upstream"]),
+        openaiUpstream: String(raw["openaiUpstream"]),
         retentionDays: ensureNumber("retention-days", raw["retentionDays"], 1, 365),
         yes: raw["yes"] === true,
       });
@@ -231,7 +237,7 @@ program
 const integrations = program
   .command("integrations")
   .alias("int")
-  .description("Detect + configure Claude Code, Cursor, Windsurf, Zed, Aider")
+  .description("Detect + configure Claude Code, Codex, Cursor, Windsurf, Zed, Aider")
   .addHelpText(
     "after",
     `\n${c.bold("Examples")}

@@ -1,6 +1,4 @@
-import type { SSEEvent, UsageCounts } from "../types.js";
-
-export type ProviderId = "anthropic" | "openai" | "gemini";
+import type { SSEEvent, UsageCounts, ProviderId } from "../types.js";
 
 /**
  * A Provider knows how to:
@@ -66,8 +64,8 @@ export interface ConvMessage {
 }
 
 export type ConvBlock =
-  | { kind: "text"; text: string }
-  | { kind: "tool_use"; id: string; name: string; input: unknown }
+  | { kind: "text"; text: string; raw?: unknown }
+  | { kind: "tool_use"; id: string; name: string; input: unknown; raw?: unknown }
   | {
       kind: "tool_result";
       tool_use_id: string;
@@ -83,5 +81,6 @@ export type ConvBlock =
         priorToolUseId: string;
         elidedBytes: number;
       };
+      raw?: unknown;
     }
   | { kind: "other"; raw: unknown };

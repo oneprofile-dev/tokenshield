@@ -1,6 +1,6 @@
 # @curatedmcp/tokenshield-core
 
-**The proxy engine behind [TokenShield](https://www.npmjs.com/package/@curatedmcp/tokenshield).** Anthropic API-layer middleware with token accounting, conversation dedup, and response cache.
+**The proxy engine behind [TokenShield](https://www.npmjs.com/package/@curatedmcp/tokenshield).** Anthropic/OpenAI API-layer middleware with token accounting, conversation dedup, and response cache.
 
 [![npm version](https://img.shields.io/npm/v/@curatedmcp/tokenshield-core.svg)](https://www.npmjs.com/package/@curatedmcp/tokenshield-core)
 [![license](https://img.shields.io/npm/l/@curatedmcp/tokenshield-core.svg)](https://github.com/oneprofile-dev/tokenshield/blob/main/LICENSE)
@@ -21,8 +21,9 @@ npm install @curatedmcp/tokenshield-core
 - **`conversationDedup`** — content-hash `tool_result` blocks; replace 2nd+ with deterministic pointer stubs
 - **`responseCache`** — LRU+TTL cache for `temperature === 0 && stream === false` requests
 - **`anthropic`** — provider adapter (URL matching, SSE usage parsing, message conversion)
+- **`openai`** — Responses API and Chat Completions adapter for Codex/OpenAI-compatible traffic
 - **`Ledger`** — SQLite-backed request log using Node 22's built-in `node:sqlite` (zero native deps)
-- **`dollarsFor()`** — accurate pricing math across all Anthropic models (Opus 4.7, Sonnet 4.6, Haiku 4.5, …)
+- **`dollarsFor()`** — pricing math across supported Anthropic and OpenAI models
 
 ## Minimal example
 
@@ -47,7 +48,7 @@ const compressedRequest = anthropic.applyConversation(anthropicMessagesRequest, 
 
 ## Provider adapter interface
 
-If you want to add OpenAI, Gemini, or a custom provider, implement:
+If you want to add Gemini or a custom provider, implement:
 
 ```ts
 interface Provider {
@@ -61,7 +62,7 @@ interface Provider {
 }
 ```
 
-OpenAI lands in v1.1, Gemini in v1.2 — or send a PR.
+OpenAI is included; Gemini or custom providers can follow the same adapter pattern.
 
 ## Privacy guarantees
 

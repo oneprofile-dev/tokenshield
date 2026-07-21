@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { canonicalize } from "../providers/anthropic.js";
+import { canonicalize } from "../providers/common.js";
+import type { ProviderId } from "../types.js";
 
 interface CacheEntry {
   status: number;
@@ -46,7 +47,7 @@ export class ResponseCache {
     private readonly defaultTtlMs = 10 * 60 * 1000,
   ) {}
 
-  private static keyFor(body: unknown): string | null {
+  private static keyFor(body: unknown, providerId: ProviderId | "unknown" = "unknown"): string | null {
     if (!body || typeof body !== "object") return null;
     const obj = body as Record<string, unknown>;
     if (obj["stream"] === true) return null;
@@ -54,24 +55,16 @@ export class ResponseCache {
     return createHash("sha256")
       .update(
         canonicalize({
-          model: obj["model"] ?? null,
-          system: obj["system"] ?? null,
-          tools: obj["tools"] ?? null,
-          tool_choice: obj["tool_choice"] ?? null,
-          messages: obj["messages"] ?? [],
-          max_tokens: obj["max_tokens"] ?? null,
-          temperature: obj["temperature"] ?? null,
-          top_p: obj["top_p"] ?? null,
-          top_k: obj["top_k"] ?? null,
-          stop_sequences: obj["stop_sequences"] ?? null,
+          providerId,
+          body: obj,
         }),
       )
       .digest("hex");
   }
 
   /** Returns a hit if the body is cacheable AND fresh; otherwise null. */
-  lookup(body: unknown): CacheHit | null {
-    const key = ResponseCache.keyFor(body);
+  lookup(body: unknown, providerId?: ProviderId | "unknown"): CacheHit | null {
+    const key = ResponseCache.keyFor(body, providerId);
     if (key === null) return null;
     const entry = this.map.get(key);
     if (entry === undefined) {
@@ -108,10 +101,11 @@ export class ResponseCache {
       body: Buffer;
       usage: { inputTokens: number; outputTokens: number };
       model: string;
+      providerId?: ProviderId | "unknown";
     },
     ttlMs?: number,
   ): void {
-    const key = ResponseCache.keyFor(body);
+    const key = ResponseCache.keyFor(body, response.providerId);
     if (key === null) return;
     // Only cache 2xx; 4xx/5xx are likely transient or user errors
     if (response.status < 200 || response.status >= 300) return;

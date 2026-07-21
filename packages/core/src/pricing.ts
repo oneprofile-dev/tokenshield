@@ -38,6 +38,36 @@ const PRICING: Record<string, ModelPricing> = {
     cacheWritePerMTok: 1.25,
     cacheReadPerMTok: 0.1,
   },
+  "gpt-5.6": {
+    inputPerMTok: 5,
+    outputPerMTok: 30,
+    cacheWritePerMTok: 6.25,
+    cacheReadPerMTok: 0.5,
+  },
+  "gpt-5.6-sol": {
+    inputPerMTok: 5,
+    outputPerMTok: 30,
+    cacheWritePerMTok: 6.25,
+    cacheReadPerMTok: 0.5,
+  },
+  "gpt-5.6-terra": {
+    inputPerMTok: 2.5,
+    outputPerMTok: 15,
+    cacheWritePerMTok: 3.125,
+    cacheReadPerMTok: 0.25,
+  },
+  "gpt-5.6-luna": {
+    inputPerMTok: 1,
+    outputPerMTok: 6,
+    cacheWritePerMTok: 1.25,
+    cacheReadPerMTok: 0.1,
+  },
+  "chat-latest": {
+    inputPerMTok: 5,
+    outputPerMTok: 30,
+    cacheWritePerMTok: 6.25,
+    cacheReadPerMTok: 0.5,
+  },
 };
 
 const DEFAULT_PRICING: ModelPricing = PRICING["claude-sonnet-4-6"]!;
@@ -45,10 +75,14 @@ const DEFAULT_PRICING: ModelPricing = PRICING["claude-sonnet-4-6"]!;
 function lookup(model: ModelId): ModelPricing {
   const exact = PRICING[model];
   if (exact) return exact;
+  const lower = model.toLowerCase();
+  if (lower.startsWith("gpt-5.6-luna")) return PRICING["gpt-5.6-luna"]!;
+  if (lower.startsWith("gpt-5.6-terra")) return PRICING["gpt-5.6-terra"]!;
+  if (lower.startsWith("gpt-5.6")) return PRICING["gpt-5.6-sol"]!;
+  if (lower === "chat-latest" || lower.startsWith("gpt-")) return PRICING["gpt-5.6-sol"]!;
   for (const [key, val] of Object.entries(PRICING)) {
     if (model.startsWith(key)) return val;
   }
-  const lower = model.toLowerCase();
   if (lower.includes("opus")) return PRICING["claude-opus-4-7"]!;
   if (lower.includes("haiku")) return PRICING["claude-haiku-4-5"]!;
   if (lower.includes("sonnet")) return PRICING["claude-sonnet-4-6"]!;

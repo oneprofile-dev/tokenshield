@@ -11,8 +11,8 @@ export {
   getProcessorEnabledIds,
   getResponseCacheStats,
 } from "./proxy/anthropic-passthrough.js";
-export { providerForPath, anthropic } from "./providers/registry.js";
-export type { Provider, Conversation, ConvMessage, ConvBlock, ProviderId } from "./providers/types.js";
+export { providerForPath, anthropic, openai } from "./providers/registry.js";
+export type { Provider, Conversation, ConvMessage, ConvBlock } from "./providers/types.js";
 export {
   telemetry,
   Telemetry,
@@ -38,5 +38,6 @@ export type {
   ProxyConfig,
   UsageCounts,
   ModelId,
+  ProviderId,
   SSEEvent,
 } from "./types.js";

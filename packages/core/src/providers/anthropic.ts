@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type { SSEEvent, UsageCounts } from "../types.js";
 import { emptyUsage } from "../pricing.js";
 import type {
@@ -8,6 +7,7 @@ import type {
   ConvMessage,
   ConvBlock,
 } from "./types.js";
+import { byteLength, canonicalize, sha256 } from "./common.js";
 
 interface AnthropicUsage {
   input_tokens?: number;
@@ -24,27 +24,6 @@ function fromAnthropic(u: AnthropicUsage | undefined): UsageCounts {
     cacheCreationInputTokens: u.cache_creation_input_tokens ?? 0,
     cacheReadInputTokens: u.cache_read_input_tokens ?? 0,
   };
-}
-
-function canonicalize(value: unknown): string {
-  if (value === null || value === undefined) return "null";
-  if (typeof value === "string") return JSON.stringify(value);
-  if (typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value)) {
-    return "[" + value.map(canonicalize).join(",") + "]";
-  }
-  const obj = value as Record<string, unknown>;
-  const keys = Object.keys(obj).sort();
-  return "{" + keys.map((k) => JSON.stringify(k) + ":" + canonicalize(obj[k])).join(",") + "}";
-}
-
-function sha256(s: string): string {
-  return createHash("sha256").update(s).digest("hex");
-}
-
-function byteLength(value: unknown): number {
-  if (typeof value === "string") return Buffer.byteLength(value, "utf8");
-  return Buffer.byteLength(JSON.stringify(value ?? ""), "utf8");
 }
 
 class AnthropicStreamAccumulator implements StreamAccumulator {
